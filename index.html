@@ -94,7 +94,7 @@
             const startDate = new Date(relationshipStartDate + "T00:00:00");
             const now = new Date();
 
-            fixedDateDisplayEl.textContent = `Mình đã chính thức bên nhau từ: ${startDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+            fixedDateDisplayEl.textContent = `Mình đã chính thức bên nhau từ: ${startDate.toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}`;
 
             if (isNaN(startDate.getTime())) {
                  durationEl.innerHTML = '<p class="text-red-500">Invalid start date configured.</p>';
