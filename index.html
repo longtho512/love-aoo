@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Our Special Place</title>
+    <title>6 tháng bên em ❤️</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script type="module">
@@ -94,7 +94,7 @@
             const startDate = new Date(relationshipStartDate + "T00:00:00");
             const now = new Date();
 
-            fixedDateDisplayEl.textContent = `Our special journey began on: ${startDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+            fixedDateDisplayEl.textContent = `Mình đã chính thức bên nhau từ: ${startDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
 
             if (isNaN(startDate.getTime())) {
                  durationEl.innerHTML = '<p class="text-red-500">Invalid start date configured.</p>';
@@ -117,10 +117,10 @@
                 months += 12;
             }
              durationEl.innerHTML = `
-                <p class="text-3xl md:text-4xl font-bold text-pink-600">${years} <span class="text-xl md:text-2xl font-normal text-gray-700">years</span></p>
-                <p class="text-3xl md:text-4xl font-bold text-pink-600">${months} <span class="text-xl md:text-2xl font-normal text-gray-700">months</span></p>
-                <p class="text-3xl md:text-4xl font-bold text-pink-600">${days} <span class="text-xl md:text-2xl font-normal text-gray-700">days</span></p>
-                <p class="mt-2 text-sm text-gray-500">Together!</p>
+                <p class="text-3xl md:text-4xl font-bold text-pink-600">${Năm} <span class="text-xl md:text-2xl font-normal text-gray-700">years</span></p>
+                <p class="text-3xl md:text-4xl font-bold text-pink-600">${Tháng} <span class="text-xl md:text-2xl font-normal text-gray-700">months</span></p>
+                <p class="text-3xl md:text-4xl font-bold text-pink-600">${Ngày} <span class="text-xl md:text-2xl font-normal text-gray-700">days</span></p>
+                <p class="mt-2 text-sm text-gray-500">Cùng nhau!</p>
             `;
 
             let nextAnniversaryDate = new Date(startDate);
