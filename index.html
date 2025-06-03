@@ -129,7 +129,7 @@
                 nextAnniversaryDate.setFullYear(now.getFullYear() + 1);
             }
             const nextAnniversaryYears = nextAnniversaryDate.getFullYear() - startDate.getFullYear();
-            nextAnniversaryEl.textContent = `Kỉ niệm tiếp theo (${nextAnniversaryYears} ${nextAnniversaryYears === 1 ? 'Năm' : 'năm'}): ${nextAnniversaryDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+            nextAnniversaryEl.textContent = `Kỉ niệm tiếp theo (${nextAnniversaryYears} ${nextAnniversaryYears === 1 ? 'Năm' : 'năm'}): ${nextAnniversaryDate.toLocaleDateString('vi-VN', { month: 'long', day: 'numeric', year: 'numeric' })}`;
 
             let currentMonthsPassed = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
             if (now.getDate() < startDate.getDate()) {
@@ -139,7 +139,7 @@
             let nextMonthlyDate = new Date(startDate);
             nextMonthlyDate.setMonth(startDate.getMonth() + nextMilestoneMonths);
             
-            nextMonthlyAnniversaryEl.textContent = `Cột mốc tiếp theo (${nextMilestoneMonths} ${nextMilestoneMonths === 1 ? 'Tháng' : 'tháng'}): ${nextMonthlyDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: (nextMonthlyDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined) })}`;
+            nextMonthlyAnniversaryEl.textContent = `Cột mốc tiếp theo (${nextMilestoneMonths} ${nextMilestoneMonths === 1 ? 'Tháng' : 'tháng'}): ${nextMonthlyDate.toLocaleDateString('vi-VN', { month: 'long', day: 'numeric', year: (nextMonthlyDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined) })}`;
         }
 
         function renderPhotoMemories() {
