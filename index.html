@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Special Place</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script type="module">
+        // --- DOM Elements ---
+        const sections = {
+            letter: null, // Renamed from story
+            memories: null,
+            journey: null
+        };
+        const navButtons = {
+            letter: null, // Renamed from story
+            memories: null,
+            journey: null
+        };
+
+        // --- App State ---
+        let currentView = 'journey'; // Default view
+        const relationshipStartDate = "2025-01-25"; // Fixed start date
+        let photoMemories = []; // Will be loaded from photoMemories.json
+
+        // --- Data Loading ---
+        async function loadPhotoMemories() {
+            try {
+                // IMPORTANT: Create a 'photoMemories.json' file in the root of your GitHub repository (same level as index.html).
+                // Example structure for photoMemories.json:
+                // [
+                //   { "id": "p1", "imageUrl": "https://via.placeholder.com/300/FFC0CB/000000?Text=Our+First+Date", "caption": "Our First Date!", "memoryDate": "2025-02-14" },
+                //   { "id": "p2", "imageUrl": "https://via.placeholder.com/300/ADD8E6/000000?Text=Vacation+Fun", "caption": "Vacation Fun", "memoryDate": "2025-03-20" }
+                // ]
+                const response = await fetch('./photoMemories.json'); // Adjust path if you place it in a subfolder e.g., './data/photoMemories.json'
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status} - Could not load photoMemories.json. Make sure the file exists and the path is correct.`);
+                }
+                photoMemories = await response.json();
+                console.log("Photo memories loaded:", photoMemories.length);
+            } catch (error) {
+                console.error("Error loading photo memories:", error);
+                photoMemories = []; // Ensure it's an empty array on error
+                const container = document.getElementById('photoMemoriesContainer');
+                if(container) container.innerHTML = `<p class="text-red-500 text-center py-4 col-span-full">Could not load memories. ${error.message}</p>`;
+            }
+            renderPhotoMemories();
+        }
+        
+        async function loadInitialData() {
+            console.log("Loading initial data...");
+            await loadPhotoMemories(); // Load photo memories from JSON
+            updateJourneyView(); // Update journey view with the fixed date
+            // The love letter is embedded in HTML, so no specific JS loading needed for it.
+        }
+
+        // --- UI Rendering and Updates ---
+        function switchView(viewName) {
+            console.log("Switching to view:", viewName);
+            currentView = viewName;
+            Object.keys(sections).forEach(key => {
+                if (sections[key]) {
+                    sections[key].classList.toggle('hidden', key !== viewName);
+                } else {
+                    console.warn(`Section element for '${key}' not found.`);
+                }
+            });
+            Object.keys(navButtons).forEach(key => {
+                if (navButtons[key]) {
+                    navButtons[key].classList.toggle('text-pink-500', key === viewName);
+                    navButtons[key].classList.toggle('text-gray-500', key !== viewName);
+                } else {
+                    console.warn(`Nav button element for '${key}' not found.`);
+                }
+            });
+            
+            if (viewName === 'journey') updateJourneyView();
+            // if (viewName === 'letter') { /* Any specific JS for letter view if needed later */ }
+            if (viewName === 'memories') renderPhotoMemories(); // Re-render if needed, though loadPhotoMemories also calls it
+        }
+
+        function updateJourneyView() {
+            const durationEl = document.getElementById('relationshipDuration');
+            const nextAnniversaryEl = document.getElementById('nextAnniversary');
+            const nextMonthlyAnniversaryEl = document.getElementById('nextMonthlyAnniversary');
+            const fixedDateDisplayEl = document.getElementById('fixedStartDateDisplay');
+
+            if (!durationEl || !nextAnniversaryEl || !nextMonthlyAnniversaryEl || !fixedDateDisplayEl) {
+                console.warn("One or more Journey view elements not found. Deferring update.");
+                return;
+            }
+            
+            const startDate = new Date(relationshipStartDate + "T00:00:00");
+            const now = new Date();
+
+            fixedDateDisplayEl.textContent = `Our special journey began on: ${startDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+
+            if (isNaN(startDate.getTime())) {
+                 durationEl.innerHTML = '<p class="text-red-500">Invalid start date configured.</p>';
+                 nextAnniversaryEl.textContent = '';
+                 nextMonthlyAnniversaryEl.textContent = '';
+                 return;
+            }
+
+            let years = now.getFullYear() - startDate.getFullYear();
+            let months = now.getMonth() - startDate.getMonth();
+            let days = now.getDate() - startDate.getDate();
+
+            if (days < 0) {
+                months--;
+                const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+                days += prevMonth.getDate();
+            }
+            if (months < 0) {
+                years--;
+                months += 12;
+            }
+             durationEl.innerHTML = `
+                <p class="text-3xl md:text-4xl font-bold text-pink-600">${years} <span class="text-xl md:text-2xl font-normal text-gray-700">years</span></p>
+                <p class="text-3xl md:text-4xl font-bold text-pink-600">${months} <span class="text-xl md:text-2xl font-normal text-gray-700">months</span></p>
+                <p class="text-3xl md:text-4xl font-bold text-pink-600">${days} <span class="text-xl md:text-2xl font-normal text-gray-700">days</span></p>
+                <p class="mt-2 text-sm text-gray-500">Together!</p>
+            `;
+
+            let nextAnniversaryDate = new Date(startDate);
+            nextAnniversaryDate.setFullYear(now.getFullYear());
+            if (nextAnniversaryDate <= now) {
+                nextAnniversaryDate.setFullYear(now.getFullYear() + 1);
+            }
+            const nextAnniversaryYears = nextAnniversaryDate.getFullYear() - startDate.getFullYear();
+            nextAnniversaryEl.textContent = `Next Anniversary (${nextAnniversaryYears} ${nextAnniversaryYears === 1 ? 'Year' : 'Years'}): ${nextAnniversaryDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+
+            let currentMonthsPassed = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
+            if (now.getDate() < startDate.getDate()) {
+                currentMonthsPassed--; 
+            }
+            let nextMilestoneMonths = currentMonthsPassed + 1;
+            let nextMonthlyDate = new Date(startDate);
+            nextMonthlyDate.setMonth(startDate.getMonth() + nextMilestoneMonths);
+            
+            nextMonthlyAnniversaryEl.textContent = `Next Milestone (${nextMilestoneMonths} ${nextMilestoneMonths === 1 ? 'Month' : 'Months'}): ${nextMonthlyDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: (nextMonthlyDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined) })}`;
+        }
+
+        function renderPhotoMemories() {
+            const container = document.getElementById('photoMemoriesContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            if (photoMemories.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4 col-span-full">No memories loaded. Check if photoMemories.json is set up correctly.</p>';
+                return;
+            }
+
+            photoMemories.forEach(memory => {
+                const memoryEl = document.createElement('div');
+                memoryEl.className = 'bg-white rounded-lg shadow overflow-hidden mb-4 relative';
+                
+                const img = document.createElement('img');
+                img.src = memory.imageUrl;
+                img.alt = memory.caption;
+                img.className = 'w-full h-48 object-cover';
+                img.onerror = () => { img.src = `https://placehold.co/600x400/f8bbd0/4a4a4a?text=Image+Not+Found`; };
+                memoryEl.appendChild(img);
+                
+                const captionDiv = document.createElement('div');
+                captionDiv.className = 'p-3';
+                
+                const captionText = document.createElement('p');
+                captionText.className = 'text-gray-800 font-semibold';
+                captionText.textContent = memory.caption;
+                captionDiv.appendChild(captionText);
+                
+                if (memory.memoryDate) {
+                    const dateText = document.createElement('p');
+                    dateText.className = 'text-sm text-gray-500';
+                    try {
+                        const dateObj = new Date(memory.memoryDate + "T00:00:00"); // Ensure parsed as local
+                        if (!isNaN(dateObj.getTime())) {
+                             dateText.textContent = dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                        } else {
+                            dateText.textContent = memory.memoryDate; 
+                        }
+                    } catch (e) {
+                        dateText.textContent = memory.memoryDate;
+                    }
+                    captionDiv.appendChild(dateText);
+                }
+                memoryEl.appendChild(captionDiv);
+                // Delete button is removed as data is managed in JSON file
+                container.appendChild(memoryEl);
+            });
+        }
+        
+        // --- Modal (can be kept for general feedback if needed later) ---
+        function showModal(title, message) {
+            const modal = document.getElementById('feedbackModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            
+            if (!modal || !modalTitle || !modalMessage) {
+                alert(`${title}: ${message}`); // Fallback
+                return;
+            }
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modal.classList.remove('hidden');
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('feedbackModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        // --- Event Listeners and Initialization ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log("DOM fully loaded and parsed");
+
+            sections.letter = document.getElementById('loveLetterSection'); // Renamed
+            sections.memories = document.getElementById('memoriesSection');
+            sections.journey = document.getElementById('journeySection');
+            
+            navButtons.letter = document.getElementById('navLetter'); // Renamed
+            navButtons.memories = document.getElementById('navMemories');
+            navButtons.journey = document.getElementById('navJourney');
+
+            if (!sections.letter || !sections.memories || !sections.journey ||
+                !navButtons.letter || !navButtons.memories || !navButtons.journey) {
+                console.error("CRITICAL: Not all section or navigation button elements were found in the DOM. Interactivity will be broken.");
+                return;
+            }
+            console.log("All section and nav elements assigned.");
+
+            await loadInitialData(); // Load data (photos from JSON, journey updates)
+            
+            switchView(currentView); // Set initial view
+
+            // Setup navigation click handlers
+            Object.keys(navButtons).forEach(key => {
+                if (navButtons[key]) {
+                    navButtons[key].addEventListener('click', (event) => {
+                        event.preventDefault();
+                        console.log(`Nav button clicked: ${key}`);
+                        switchView(key);
+                    });
+                }
+            });
+            
+            const closeModalButton = document.getElementById('closeModalButton');
+            if (closeModalButton) {
+                 closeModalButton.addEventListener('click', closeModal);
+            } else { console.warn("Close Modal Button not found."); }
+
+            setInterval(updateJourneyView, 60000); 
+            console.log("Event listeners and periodic updates set up.");
+        });
+
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; overscroll-behavior-y: contain; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
+        .ios-input { @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-300 focus:border-pink-400 transition-shadow; }
+        .ios-button { @apply w-full bg-pink-500 text-white font-semibold py-3 px-4 rounded-lg hover:bg-pink-600 transition-colors shadow-md active:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-opacity-50; }
+        .ios-header { @apply text-2xl font-bold text-gray-800 pb-4 border-b border-gray-200 mb-6 text-center; }
+        .content-section { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        button:active { transform: scale(0.98); }
+        .love-letter-text p { @apply mb-4 leading-relaxed text-gray-700; } /* Style for paragraphs in love letter */
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col h-screen max-h-screen">
+
+    <header class="bg-white shadow-sm p-3 text-center sticky top-0 z-20">
+        <h1 class="text-xl font-semibold text-pink-600">Our Special Place</h1>
+        </header>
+
+    <main id="contentArea" class="flex-grow overflow-y-auto p-4 md:p-6 space-y-6">
+        <section id="journeySection" class="content-section bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="ios-header">Our Journey Together</h2>
+            <div class="space-y-4 text-center">
+                <p id="fixedStartDateDisplay" class="text-md text-gray-700 mb-4">Our special journey began on: January 25, 2025</p>
+                <div id="relationshipDuration" class="py-6 bg-pink-50 rounded-lg">
+                    <p class="text-gray-600">Loading duration...</p>
+                </div>
+                <div class="space-y-2 text-sm text-gray-700">
+                    <p id="nextAnniversary" class="p-3 bg-gray-50 rounded-md">Calculating next anniversary...</p>
+                    <p id="nextMonthlyAnniversary" class="p-3 bg-gray-50 rounded-md">Calculating next milestone...</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="loveLetterSection" class="content-section hidden bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="ios-header">A Letter For You, My Love</h2>
+            <div id="loveLetterContent" class="love-letter-text prose max-w-none">
+                <p>My Dearest [Her Name],</p>
+                <p>Words can sometimes feel inadequate to express the depth of what I feel for you. From the moment our paths crossed, you've illuminated my world in ways I never imagined possible. This little space is just a small token, a digital whisper of the love that fills my heart every day.</p>
+                <p>Remember that time we [insert a short sweet memory]? Or how we always [insert a cute shared habit/joke]? Those moments, big and small, are treasures I hold dear. Each day with you is an adventure, a comfort, a joy.</p>
+                <p>You are my [compliment, e.g., sunshine, rock, best friend], and I look forward to all the chapters we have yet to write together. Our journey started on January 25th, 2025, and it's already been filled with so much. Here's to countless more memories, laughs, and dreams shared.</p>
+                <p>With all my love, always and forever,</p>
+                <p>[Your Name]</p>
+            </div>
+        </section>
+
+        <section id="memoriesSection" class="content-section hidden bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="ios-header">Our Cherished Memories</h2>
+            <p class="text-center text-sm text-gray-500 mb-4">These memories are loaded from our special `photoMemories.json` file.</p>
+            <div id="photoMemoriesContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[calc(100vh-250px)] overflow-y-auto">
+                 <p class="text-gray-500 text-center py-4 col-span-full">Loading memories...</p>
+            </div>
+        </section>
+    </main>
+
+    <nav class="bg-white border-t border-gray-200 p-3 sticky bottom-0 z-20 shadow-top">
+        <div class="flex justify-around max-w-md mx-auto">
+            <button id="navJourney" class="flex flex-col items-center text-pink-500 w-1/3 p-2 rounded-lg hover:bg-pink-50 transition focus:outline-none focus:bg-pink-100" aria-label="Our Journey">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-heart"><path d="M21 10V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M21.29 14.7a2.43 2.43 0 0 0-2.65-.52c-.3.12-.57.3-.8.53l-.34.34-.35-.34a2.43 2.43 0 0 0-2.65-.53c-.3.12-.56.3-.79.53-.95.94-1 2.53.2 3.74L17.5 21l3.6-3.55c1.2-1.21 1.14-2.8.19-3.74Z"/></svg>
+                <span class="text-xs mt-1">Journey</span>
+            </button>
+            <button id="navLetter" class="flex flex-col items-center text-gray-500 w-1/3 p-2 rounded-lg hover:bg-pink-50 transition focus:outline-none focus:bg-pink-100" aria-label="Love Letter"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> <span class="text-xs mt-1">Love Letter</span> </button>
+            <button id="navMemories" class="flex flex-col items-center text-gray-500 w-1/3 p-2 rounded-lg hover:bg-pink-50 transition focus:outline-none focus:bg-pink-100" aria-label="Our Memories">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                <span class="text-xs mt-1">Memories</span>
+            </button>
+        </div>
+    </nav>
+
+    <div id="feedbackModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-60 flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+            <h3 id="modalTitle" class="text-xl font-semibold mb-2 text-gray-800"></h3>
+            <p id="modalMessage" class="text-gray-700 mb-4"></p>
+            <button id="closeModalButton" class="ios-button bg-pink-500 text-white hover:bg-pink-600">OK</button>
+        </div>
+    </div>
+
+</body>
+</html>
