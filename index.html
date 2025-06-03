@@ -129,7 +129,7 @@
                 nextAnniversaryDate.setFullYear(now.getFullYear() + 1);
             }
             const nextAnniversaryYears = nextAnniversaryDate.getFullYear() - startDate.getFullYear();
-            nextAnniversaryEl.textContent = `Next Anniversary (${nextAnniversaryYears} ${nextAnniversaryYears === 1 ? 'Year' : 'Years'}): ${nextAnniversaryDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+            nextAnniversaryEl.textContent = `Kỉ niệm tiếp theo (${nextAnniversaryYears} ${nextAnniversaryYears === 1 ? 'Năm' : 'năm'}): ${nextAnniversaryDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
 
             let currentMonthsPassed = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
             if (now.getDate() < startDate.getDate()) {
@@ -139,7 +139,7 @@
             let nextMonthlyDate = new Date(startDate);
             nextMonthlyDate.setMonth(startDate.getMonth() + nextMilestoneMonths);
             
-            nextMonthlyAnniversaryEl.textContent = `Next Milestone (${nextMilestoneMonths} ${nextMilestoneMonths === 1 ? 'Month' : 'Months'}): ${nextMonthlyDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: (nextMonthlyDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined) })}`;
+            nextMonthlyAnniversaryEl.textContent = `Cột mốc tiếp theo (${nextMilestoneMonths} ${nextMilestoneMonths === 1 ? 'Tháng' : 'tháng'}): ${nextMonthlyDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: (nextMonthlyDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined) })}`;
         }
 
         function renderPhotoMemories() {
@@ -274,12 +274,12 @@
 <body class="bg-gray-100 flex flex-col h-screen max-h-screen">
 
     <header class="bg-white shadow-sm p-3 text-center sticky top-0 z-20">
-        <h1 class="text-xl font-semibold text-pink-600">Our Special Place</h1>
+        <h1 class="text-xl font-semibold text-pink-600">Chúc mừng kỉ niệm 6 tháng bên nhau ❤️</h1>
         </header>
 
     <main id="contentArea" class="flex-grow overflow-y-auto p-4 md:p-6 space-y-6">
         <section id="journeySection" class="content-section bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="ios-header">Our Journey Together</h2>
+            <h2 class="ios-header">Hành trình của chúng mình</h2>
             <div class="space-y-4 text-center">
                 <p id="fixedStartDateDisplay" class="text-md text-gray-700 mb-4">Our special journey began on: January 25, 2025</p>
                 <div id="relationshipDuration" class="py-6 bg-pink-50 rounded-lg">
