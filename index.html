@@ -175,7 +175,7 @@
             
             let nextMonthlyDate = new Date(startDate.getFullYear(), startDate.getMonth() + nextMilestoneTotalMonths, startDate.getDate());
             
-            nextMonthlyAnniversaryEl.textContent = `Cột mốc tiếp theo (${nextMilestoneTotalMonths} ${nextMilestoneTotalMonths === 1 ? 'Month' : 'Months'}): ${nextMonthlyDate.toLocaleDateString('vi-VN', { month: 'long', day: 'numeric', year: (nextMonthlyDate.getFullYear() !== today.getFullYear() ? 'numeric' : undefined) })}`;
+            nextMonthlyAnniversaryEl.textContent = `Cột mốc tiếp theo (${nextMilestoneTotalMonths} ${nextMilestoneTotalMonths === 1 ? 'Tháng' : 'tháng'}): ${nextMonthlyDate.toLocaleDateString('vi-VN', { month: 'long', day: 'numeric', year: (nextMonthlyDate.getFullYear() !== today.getFullYear() ? 'numeric' : undefined) })}`;
         }
 
 
