@@ -25,10 +25,11 @@
         let lightbox = null, lightboxImage = null, lightboxCaption = null, lightboxDate = null, lightboxLocation = null, lightboxStory = null, closeLightboxButton = null;
         let loveLetterPlaceholder = null, actualLoveLetter = null, letterCountdownEl = null;
         let timelineEventModal = null, timelineEventModalTitle = null, timelineEventModalDate = null, timelineEventModalDescription = null, timelineEventModalImage = null, closeTimelineEventModalButton = null;
+        let contentArea = null; // for smooth scrolling
 
         // --- App State ---
         let currentView = 'journey';
-        const relationshipStartDate = "2025-01-21";
+        const relationshipStartDate = "2025-01-21"; // PLEASE ADJUST THIS DATE TO YOUR ACTUAL START DATE for testing letter reveal
         let photoMemories = [];
         
         const timelineEventsData = [
@@ -38,16 +39,32 @@
             { date: "2025-03-19", title: "Xem Interstellar & Lần Đầu 😈", icon: "😘", description: "Buổi xem phim Interstellar Imax và lần đầu của mình", photoId: "p0" },
             { date: "2025-03-27", title: "Chụp Photobooth Lần Đầu", icon: "📸", description: "Lần đầu tiên hai nha đồu ngốc cùng nhau đi chụp photobooth", photoId: "p4" },
             { date: "2025-03-27", title: "Và Cũng Là Ngày Bị Bắt Lần Đầu lun", icon: "😟", description: "Xui ghê he :((", photoId: "p56" },
-            { date: "2025-04-06", title: "Đi Ăng Cưới Ở Rico Steakhouse", icon: "🤵🏻👰🏻", description: "Chờ ngày về chung nhà <3", photoId: "p99"}, // Ensure p99 exists in photoMemories.json
+            { date: "2025-04-06", title: "Đi Ăng Cưới Ở Rico Steakhouse", icon: "🤵🏻👰🏻", description: "Chờ ngày về chung nhà <3", photoId: "p99"},
             { date: "2025-04-20", title: "Sinh Nhật Đầu Tiên Cùng Em", icon: "🎂", description: "Cùng nhau đón nhiều sinh nhật nữa ná", photoId: "p9" },
             { date: "2025-05-15", title: "Chuyến Đi Huế Định Mệnh, Lần Đầu Đi Du Lịch Cùng Nhau", icon: "🚂", description: "Hơi ba chấm 1 xí nhưng vẫn vui vì có em =))", photoId: "p92345678" },
             { date: "2025-07-21", title: "Kỷ Niệm 6 Tháng Bên Nhau", icon: "💖", description: "Chúc mừng 6 tháng bên nhauuuuu! Mong rằng hai đứa mình sẽ có thêm nhiều kỉ niệm đẹp!!!!" }
         ].sort((a, b) => new Date(a.date) - new Date(b.date));
 
+        // --- Utility Functions ---
+        function createLoadingSpinner(message) {
+            const spinnerContainer = document.createElement('div');
+            spinnerContainer.className = 'col-span-full flex flex-col items-center justify-center py-10 text-center';
+            spinnerContainer.innerHTML = `
+                <div class="loading-spinner mb-4"></div>
+                <p class="text-gray-600">${message}</p>
+            `;
+            return spinnerContainer;
+        }
+
         // --- Data Loading ---
         async function loadPhotoMemories() {
+            const container = document.getElementById('photoMemoriesContainer');
+            if (!container) return;
+            container.innerHTML = ''; // Clear previous content
+            container.appendChild(createLoadingSpinner("Đang tải kỷ niệm ảnh...")); // ADDED: Show spinner
+
             try {
-                const response = await fetch('./photoMemories.json');
+                const response = await fetch('./photoMemories.json'); // Ensure this file exists and is accessible
                 if (!response.ok) {
                     const errorText = `HTTP error! status: ${response.status}. Path: ./photoMemories.json`;
                     console.error(errorText);
@@ -59,17 +76,16 @@
             } catch (error) {
                 console.error("Error loading or parsing photo memories:", error);
                 photoMemories = [];
-                const container = document.getElementById('photoMemoriesContainer');
-                if (container) container.innerHTML = `<p class="text-red-500 text-center py-4 col-span-full">Không thể tải kỷ niệm. Lỗi: ${error.message}</p>`;
+                if (container) container.innerHTML = `<p class="text-red-500 text-center py-4 col-span-full">Không thể tải kỷ niệm ảnh. Lỗi: ${error.message}</p>`;
             }
-            renderPhotoMemories();
+            renderPhotoMemories(); // Render even if empty or error (render will handle it)
         }
 
         async function loadInitialData() {
             console.log("Loading initial data...");
-            await loadPhotoMemories();
+            await loadPhotoMemories(); // This will call renderPhotoMemories internally
             updateJourneyView();
-            renderTimelineEvents();
+            renderTimelineEvents(); // This will display its own loader
         }
 
         // --- UI Rendering and Updates ---
@@ -84,11 +100,25 @@
                 if (navButtons[key]) {
                     navButtons[key].classList.toggle('text-pink-500', key === viewName);
                     navButtons[key].classList.toggle('text-gray-500', key !== viewName);
+                    navButtons[key].setAttribute('aria-current', key === viewName ? 'page' : 'false'); // ACCESSIBILITY
                 } else console.warn(`Nav button element for '${key}' not found.`);
             });
             if (viewName === 'journey') updateJourneyView();
-            if (viewName === 'memories' && photoMemories.length > 0) renderPhotoMemories();
+            // renderPhotoMemories is called by loadPhotoMemories or if switching back and it was already loaded
+            if (viewName === 'memories' && photoMemories.length > 0 && document.getElementById('photoMemoriesContainer').innerHTML.includes('Đang tải')) {
+                 renderPhotoMemories(); // Re-render if it was showing loader from a failed previous attempt
+            } else if (viewName === 'memories' && !photoMemories.length && !document.getElementById('photoMemoriesContainer').innerHTML.includes('Không thể tải')) {
+                // If memories tab is clicked and photoMemories is empty AND it's not already showing an error/loading.
+                // This handles cases where photoMemories.json might be empty or initial load failed.
+                renderPhotoMemories();
+            }
+
             if (viewName === 'letter') setupLoveLetterReveal();
+            
+            // ADDED: Smooth scroll to top of content area
+            if (contentArea) {
+                contentArea.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         }
 
         function updateJourneyView() {
@@ -153,16 +183,43 @@
         function renderPhotoMemories() {
             const container = document.getElementById('photoMemoriesContainer');
             if (!container) return;
-            container.innerHTML = '';
-            if (photoMemories.length === 0) { return; }
+            container.innerHTML = ''; // Clear previous content (like spinner or error message)
+
+            if (photoMemories.length === 0) {
+                // Check if it was an error or genuinely no memories
+                if (container.dataset.loadError) { // Assuming we set this dataset if fetch failed before
+                     container.innerHTML = `<p class="text-red-500 text-center py-4 col-span-full">Không thể tải kỷ niệm ảnh. Vui lòng thử lại sau.</p>`;
+                } else {
+                     container.innerHTML = '<p class="text-gray-500 text-center py-4 col-span-full">Chưa có kỷ niệm ảnh nào được thêm.</p>';
+                }
+                return;
+            }
+
             photoMemories.forEach(memory => {
                 const memoryEl = document.createElement('div');
-                memoryEl.className = 'bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden relative group cursor-pointer';
+                // MODIFIED: Added focus styling, tabindex, role, and keydown listener for accessibility
+                memoryEl.className = 'bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden relative group cursor-pointer focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 focus:ring-offset-white';
+                memoryEl.tabIndex = 0; // Make it focusable
+                memoryEl.setAttribute('role', 'button');
+                memoryEl.setAttribute('aria-label', `Xem chi tiết kỷ niệm: ${memory.caption || 'Không có chú thích'}`);
+
                 memoryEl.addEventListener('click', () => openLightbox(memory.internalId));
+                memoryEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openLightbox(memory.internalId);
+                    }
+                });
+
                 const img = document.createElement('img');
-                img.src = memory.imageUrl; img.alt = memory.caption || "Kỷ niệm";
+                img.src = memory.imageUrl;
+                // MODIFIED: More descriptive alt text
+                img.alt = `Ảnh kỷ niệm: ${memory.caption || 'không có chú thích'}${memory.location ? ` tại ${memory.location}` : ''}`;
                 img.className = 'w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105';
-                img.onerror = () => { img.src = `https://placehold.co/600x400/f8bbd0/4a4a4a?text=Kh%C3%B4ng+t%C3%ACm+th%E1%BA%A5y+%E1%BA%A3nh`; img.alt = "Không tìm thấy ảnh"; };
+                img.onerror = () => { 
+                    img.src = `https://placehold.co/600x400/f8bbd0/4a4a4a?text=Kh%C3%B4ng+t%C3%ACm+th%E1%BA%A5y+%E1%BA%A3nh`; 
+                    img.alt = "Không tìm thấy ảnh cho kỷ niệm này"; 
+                };
                 memoryEl.appendChild(img);
                 const captionDiv = document.createElement('div'); captionDiv.className = 'p-3';
                 const capText = document.createElement('p'); capText.className = 'text-gray-800 font-semibold truncate'; capText.textContent = memory.caption || "Không có chú thích"; captionDiv.appendChild(capText);
@@ -182,62 +239,69 @@
         function renderTimelineEvents() {
             const container = document.getElementById('timelineEventsContainer');
             if (!container) { console.error("timelineEventsContainer not found."); return; }
-            container.innerHTML = '';
+            container.innerHTML = ''; // Clear previous
+            container.appendChild(createLoadingSpinner("Đang tải dòng thời gian...")); // ADDED: Show spinner
 
-            if (timelineEventsData.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center py-4">Chưa có sự kiện nào trong dòng thời gian.</p>';
-                return;
-            }
-            
-            timelineEventsData.forEach((event, index) => {
-                const eventWrapper = document.createElement('div');
-                eventWrapper.className = 'relative group cursor-pointer'; // Removed pl-8 and py-3, will be on cardEl
-
-                // Dot Element
-                const dotEl = document.createElement('div');
-                dotEl.className = 'absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 bg-pink-500 rounded-full border-2 border-white group-hover:bg-pink-700 transition-colors z-10';
-                eventWrapper.appendChild(dotEl);
-
-                // Line Element (only if not the last item)
-                if (index < timelineEventsData.length - 1) {
-                    const lineEl = document.createElement('div');
-                    // Starts from the center of the dot, extends downwards.
-                    // left-3 (for dot) + (w-3 / 2 for dot) - (w-0.5 / 2 for line) = approx left-[13px] or similar
-                    // Or, more simply, align its left edge with the dot's left edge, and adjust its width.
-                    // The line is purely visual and behind the card content.
-                    lineEl.className = 'absolute left-[13px] top-1/2 w-0.5 h-full bg-pink-200 -z-0'; // Let card bg cover it
-                    eventWrapper.appendChild(lineEl);
+            // Simulate a short delay for spinner visibility if data is already available
+            setTimeout(() => {
+                if (timelineEventsData.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-4">Chưa có sự kiện nào trong dòng thời gian.</p>';
+                    return;
                 }
+                container.innerHTML = ''; // Clear spinner before adding events
                 
-                // Content Card Element (indented to the right of the dot/line)
-                const cardEl = document.createElement('div');
-                cardEl.className = 'ml-10 p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 mb-6'; // Added mb-6 for spacing
+                timelineEventsData.forEach((event, index) => {
+                    const eventWrapper = document.createElement('div');
+                    // MODIFIED: Added focus styling, tabindex, role, and keydown listener
+                    eventWrapper.className = 'relative group cursor-pointer focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-1 focus:ring-offset-white rounded-lg'; // Added rounded-lg for better focus ring visibility
+                    eventWrapper.tabIndex = 0;
+                    eventWrapper.setAttribute('role', 'button');
+                    eventWrapper.setAttribute('aria-label', `Xem chi tiết sự kiện: ${event.title}`);
 
-                let photoHtml = '';
-                if (event.photoId) {
-                    const photo = photoMemories.find(p => p.internalId === event.photoId);
-                    if (photo && photo.imageUrl) {
-                        photoHtml = `<img src="${photo.imageUrl}" alt="${event.title || 'Kỷ niệm'}" class="mt-3 rounded-md max-h-40 object-cover w-full sm:w-auto transition-transform duration-300 group-hover:scale-105">`;
-                    } else {
-                        // console.warn(`Photo not found or imageUrl missing for photoId: ${event.photoId} in timeline event: "${event.title}"`);
+                    const dotEl = document.createElement('div');
+                    dotEl.className = 'absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 bg-pink-500 rounded-full border-2 border-white group-hover:bg-pink-700 transition-colors z-10';
+                    eventWrapper.appendChild(dotEl);
+
+                    if (index < timelineEventsData.length - 1) {
+                        const lineEl = document.createElement('div');
+                        lineEl.className = 'absolute left-[13px] top-1/2 w-0.5 h-full bg-pink-200 -z-0';
+                        eventWrapper.appendChild(lineEl);
                     }
-                }
+                    
+                    const cardEl = document.createElement('div');
+                    cardEl.className = 'ml-10 p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 mb-6'; 
 
-                cardEl.innerHTML = `
-                    <div class="flex items-baseline mb-1">
-                        <span class="text-xl sm:text-2xl mr-2 group-hover:scale-110 transition-transform">${event.icon || '🗓️'}</span>
-                        <h3 class="text-md sm:text-lg font-semibold text-pink-600 group-hover:text-pink-700 transition-colors">${event.title}</h3>
-                    </div>
-                    <time class="block mb-2 text-xs sm:text-sm font-normal leading-none text-gray-500">
-                        ${new Date(event.date + "T00:00:00").toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </time>
-                    <p class="text-sm text-gray-700">${event.description}</p>
-                    ${photoHtml}
-                `;
-                eventWrapper.appendChild(cardEl);
-                eventWrapper.addEventListener('click', () => openTimelineEventModal(event));
-                container.appendChild(eventWrapper);
-            });
+                    let photoHtml = '';
+                    if (event.photoId) {
+                        const photo = photoMemories.find(p => p.internalId === event.photoId);
+                        if (photo && photo.imageUrl) {
+                            // MODIFIED: More descriptive alt text
+                            photoHtml = `<img src="${photo.imageUrl}" alt="Ảnh minh họa cho sự kiện: ${event.title}" class="mt-3 rounded-md max-h-40 object-cover w-full sm:w-auto transition-transform duration-300 group-hover:scale-105">`;
+                        }
+                    }
+
+                    cardEl.innerHTML = `
+                        <div class="flex items-baseline mb-1">
+                            <span class="text-xl sm:text-2xl mr-2 group-hover:scale-110 transition-transform">${event.icon || '🗓️'}</span>
+                            <h3 class="text-md sm:text-lg font-semibold text-pink-600 group-hover:text-pink-700 transition-colors">${event.title}</h3>
+                        </div>
+                        <time class="block mb-2 text-xs sm:text-sm font-normal leading-none text-gray-500">
+                            ${new Date(event.date + "T00:00:00").toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </time>
+                        <p class="text-sm text-gray-700">${event.description}</p>
+                        ${photoHtml}
+                    `;
+                    eventWrapper.appendChild(cardEl);
+                    eventWrapper.addEventListener('click', () => openTimelineEventModal(event));
+                    eventWrapper.addEventListener('keydown', (e) => { // ACCESSIBILITY
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            openTimelineEventModal(event);
+                        }
+                    });
+                    container.appendChild(eventWrapper);
+                });
+            }, photoMemories.length > 0 ? 0 : 50); // If photoMemories (used for images) isn't loaded, slight delay. Otherwise, render fast.
         }
 
         function openTimelineEventModal(eventData) {
@@ -255,7 +319,8 @@
             const linkedPhoto = eventData.photoId ? photoMemories.find(p => p.internalId === eventData.photoId) : null;
             if (linkedPhoto && linkedPhoto.imageUrl) {
                 timelineEventModalImage.src = linkedPhoto.imageUrl;
-                timelineEventModalImage.alt = eventData.title || "Hình ảnh sự kiện";
+                // MODIFIED: More descriptive alt text
+                timelineEventModalImage.alt = `Hình ảnh cho sự kiện: ${eventData.title}`;
                 timelineEventModalImage.classList.remove('hidden');
             } else {
                 timelineEventModalImage.classList.add('hidden');
@@ -263,17 +328,18 @@
                 timelineEventModalImage.alt = "";
             }
             
-            // Ensure modal is visible
-            timelineEventModal.classList.remove('modal-hidden'); // Using custom class
-            timelineEventModal.classList.add('modal-visible');   // Using custom class
+            timelineEventModal.classList.remove('modal-hidden'); 
+            timelineEventModal.classList.add('modal-visible');  
             document.body.style.overflow = 'hidden';
+            // MODIFIED: Focus on the modal content or close button for accessibility
+            closeTimelineEventModalButton.focus(); 
             console.log("Timeline modal should be displayed.");
         }
 
         function closeTimelineEventModal() {
             if (!timelineEventModal) return;
-            timelineEventModal.classList.add('modal-hidden');    // Using custom class
-            timelineEventModal.classList.remove('modal-visible'); // Using custom class
+            timelineEventModal.classList.add('modal-hidden');   
+            timelineEventModal.classList.remove('modal-visible'); 
             document.body.style.overflow = 'auto';
             console.log("Timeline modal closed.");
         }
@@ -282,7 +348,11 @@
         function openLightbox(memoryInternalId) {
             const memory = photoMemories.find(m => m.internalId === memoryInternalId);
             if (!memory || !lightbox) return;
-            if (lightboxImage) { lightboxImage.src = memory.imageUrl; lightboxImage.alt = memory.caption || "Kỷ niệm"; }
+            if (lightboxImage) { 
+                lightboxImage.src = memory.imageUrl; 
+                // MODIFIED: More descriptive alt text
+                lightboxImage.alt = `Ảnh phóng to: ${memory.caption || 'Không có chú thích'}${memory.location ? ` tại ${memory.location}` : ''}`; 
+            }
             if (lightboxCaption) lightboxCaption.textContent = memory.caption || "Không có chú thích";
             if (lightboxDate) {
                 if (memory.memoryDate) {
@@ -295,15 +365,17 @@
             if (lightboxLocation) lightboxLocation.textContent = memory.location ? `Địa điểm: ${memory.location}` : "Địa điểm: Không rõ";
             if (lightboxStory) lightboxStory.textContent = memory.story || "Chưa có câu chuyện cho kỷ niệm này.";
             
-            lightbox.classList.remove('modal-hidden'); // Using custom class for consistency
-            lightbox.classList.add('modal-visible');   // Using custom class
+            lightbox.classList.remove('modal-hidden'); 
+            lightbox.classList.add('modal-visible');   
             document.body.style.overflow = 'hidden';
+            // MODIFIED: Focus on the close button for accessibility
+            if(closeLightboxButton) closeLightboxButton.focus();
         }
 
         function closeLightbox() {
             if (!lightbox) return;
-            lightbox.classList.add('modal-hidden');    // Using custom class
-            lightbox.classList.remove('modal-visible'); // Using custom class
+            lightbox.classList.add('modal-hidden');   
+            lightbox.classList.remove('modal-visible'); 
             document.body.style.overflow = 'auto';
         }
 
@@ -311,7 +383,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("DOM fully loaded and parsed. Initializing page...");
 
-            sections.letter = document.getElementById('loveLetterSection');
+            contentArea = document.getElementById('contentArea'); // sections.letter = document.getElementById('loveLetterSection');
             sections.memories = document.getElementById('memoriesSection');
             sections.journey = document.getElementById('journeySection');
             sections.timeline = document.getElementById('timelineSection'); 
@@ -337,7 +409,7 @@
             closeTimelineEventModalButton = document.getElementById('closeTimelineEventModalButton');
 
             const allCoreElementsPresent = 
-                sections.letter && sections.memories && sections.journey && sections.timeline &&
+                contentArea && // sections.letter && sections.memories && sections.journey && sections.timeline &&
                 navButtons.letter && navButtons.memories && navButtons.journey && navButtons.timeline &&
                 lightbox && lightboxImage && lightboxCaption && lightboxDate && lightboxLocation && lightboxStory && closeLightboxButton && 
                 loveLetterPlaceholder && actualLoveLetter && letterCountdownEl &&
@@ -346,11 +418,10 @@
 
             if (!allCoreElementsPresent) {
                 let missingElements = "";
-                // Add checks for each element to identify which one is missing
+                if (!contentArea) missingElements += "contentArea, ";
                 if (!sections.letter) missingElements += "sections.letter, ";
                 // ... (add all checks here for debugging)
                 if (!timelineEventModalImage) missingElements += "timelineEventModalImage, ";
-
 
                 console.error(`CRITICAL FAILURE: One or more core UI elements are missing from the DOM. Missing: ${missingElements}. Page cannot initialize correctly. Please check all element IDs in your HTML and script.`);
                 document.body.innerHTML = `<p style='color:red; font-size:1.2em; padding:20px; text-align:center;'>Lỗi nghiêm trọng: Không tìm thấy các thành phần giao diện cần thiết. Trang không thể hoạt động. Vui lòng kiểm tra mã HTML. Thiếu: ${missingElements}</p>`;
@@ -373,9 +444,9 @@
                  console.error("ERROR during page initialization (loadInitialData, setup, or switchView):", e);
                  const journeySection = document.getElementById('journeySection');
                  if (journeySection) {
-                    journeySection.innerHTML = `<h2 class="ios-header">Lỗi Khởi Tạo</h2><p class="text-red-500 text-center">Không thể tải hoặc thiết lập dữ liệu cần thiết cho trang. Vui lòng thử lại sau. Chi tiết lỗi: ${e.message}</p>`;
+                     journeySection.innerHTML = `<h2 class="ios-header">Lỗi Khởi Tạo</h2><p class="text-red-500 text-center">Không thể tải hoặc thiết lập dữ liệu cần thiết cho trang. Vui lòng thử lại sau. Chi tiết lỗi: ${e.message}</p>`;
                  } else {
-                    document.body.innerHTML = `<p style='color:red; font-size:1.2em; padding:20px; text-align:center;'>Lỗi tải dữ liệu hoặc khởi tạo trang. Vui lòng thử lại sau. Chi tiết: ${e.message}</p>`;
+                     document.body.innerHTML = `<p style='color:red; font-size:1.2em; padding:20px; text-align:center;'>Lỗi tải dữ liệu hoặc khởi tạo trang. Vui lòng thử lại sau. Chi tiết: ${e.message}</p>`;
                  }
                  return; 
             }
@@ -393,6 +464,18 @@
             if (lightbox) lightbox.addEventListener('click', (event) => { if (event.target === lightbox) closeLightbox(); });
             if (closeTimelineEventModalButton) closeTimelineEventModalButton.addEventListener('click', closeTimelineEventModal);
             if (timelineEventModal) timelineEventModal.addEventListener('click', (event) => { if (event.target === timelineEventModal) closeTimelineEventModal(); });
+
+            // Also close modals on 'Escape' key press
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    if (lightbox && lightbox.classList.contains('modal-visible')) {
+                        closeLightbox();
+                    }
+                    if (timelineEventModal && timelineEventModal.classList.contains('modal-visible')) {
+                        closeTimelineEventModal();
+                    }
+                }
+            });
 
             setInterval(() => {
                 if (document.hidden) return; 
@@ -414,42 +497,60 @@
         .love-letter-text p { @apply mb-4 leading-relaxed text-gray-700; }
         nav .flex > button { @apply w-1/4; }
         
-        /* Modal Base Styles */
+        /* ACCESSIBILITY NOTE: Check color contrast for text elements (e.g., text-gray-500 on light backgrounds) 
+           using a contrast checker tool to ensure WCAG AA compliance (4.5:1 for normal text). */
+
+        /* MODAL Base Styles */
         .modal-base {
             position: fixed; top: 0; right: 0; bottom: 0; left: 0;
             background-color: rgba(0,0,0,0.75);
             padding: 1rem; /* p-4 */
-            z-index: 50; /* Default z-index for modals */
-            display: flex; /* Changed from none to flex, visibility controlled by specific classes */
+            z-index: 50; 
+            display: flex; 
             align-items: center;
             justify-content: center;
         }
-        .modal-hidden { display: none !important; } /* Use !important to ensure it overrides other display properties */
-        .modal-visible { display: flex !important; } /* Ensure it's flex when visible */
-
+        .modal-hidden { display: none !important; } 
+        .modal-visible { display: flex !important; }
 
         /* Image Lightbox */
-        #imageLightbox { z-index: 50; /* Ensure consistency or make higher if needed */ }
+        #imageLightbox { z-index: 50; }
         .lightbox-content { @apply bg-white rounded-lg shadow-xl p-4 md:p-6 max-w-lg sm:max-w-xl md:max-w-3xl w-full max-h-[90vh] overflow-y-auto flex flex-col md:flex-row gap-4; }
         #lightboxImage { @apply w-full md:w-1/2 h-auto max-h-[50vh] md:max-h-[calc(80vh-4rem)] object-contain rounded-md mb-4 md:mb-0; }
         .lightbox-details { @apply md:w-1/2 flex flex-col py-1 md:py-2; }
         #lightboxCaption { @apply text-lg sm:text-xl font-semibold text-pink-600 mb-2 break-words; }
         #lightboxDate, #lightboxLocation { @apply text-xs sm:text-sm text-gray-600 mb-1; }
         #lightboxStory { @apply text-sm sm:text-base text-gray-700 mt-2 md:mt-3 leading-relaxed flex-grow overflow-y-auto pr-1 md:pr-2; }
-        #closeLightboxButton { @apply absolute top-2 right-2 sm:top-3 sm:right-3 text-white bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full p-0 text-2xl sm:text-3xl; width: 30px; height: 30px; sm:width: 36px; sm:height: 36px; display: flex; align-items: center; justify-content: center; line-height: 1; }
+        /* MODIFIED: Added focus state for close button */
+        #closeLightboxButton { @apply absolute top-2 right-2 sm:top-3 sm:right-3 text-white bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full p-0 text-2xl sm:text-3xl focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-1 focus:ring-offset-black; width: 30px; height: 30px; sm:width: 36px; sm:height: 36px; display: flex; align-items: center; justify-content: center; line-height: 1; }
         
         /* Timeline Styles */
         #timelineSection .ios-header { @apply text-pink-700;}
-        #timelineEventsContainer { @apply space-y-0; }
+        #timelineEventsContainer { @apply space-y-0; } 
         
         /* Timeline Event Modal */
-        #timelineEventModal { z-index: 55; /* Higher than image lightbox if they can overlap */ }
+        #timelineEventModal { z-index: 55; }
         .timeline-modal-content { @apply bg-white rounded-lg shadow-xl p-5 sm:p-6 max-w-md w-full max-h-[85vh] overflow-y-auto text-center sm:text-left; }
         #timelineEventModalTitle { @apply text-xl sm:text-2xl font-bold text-pink-600 mb-2; }
         #timelineEventModalDate { @apply text-sm text-gray-500 mb-3; }
         #timelineEventModalDescription { @apply text-base text-gray-700 mb-4 leading-relaxed; }
         #timelineEventModalImage { @apply rounded-lg max-h-60 w-auto mx-auto sm:mx-0 mb-4 object-contain; }
-        #closeTimelineEventModalButton { @apply mt-4 w-full sm:w-auto bg-pink-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-pink-600 transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300; }
+        /* MODIFIED: Enhanced focus state for close button */
+        #closeTimelineEventModalButton { @apply mt-4 w-full sm:w-auto bg-pink-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-pink-600 transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2; }
+
+        /* ADDED: Loading Spinner Styles */
+        .loading-spinner {
+            border: 4px solid #fce7f3; /* Light pink track */
+            border-top: 4px solid #f472b6; /* Pink spinner */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-pink-50 flex flex-col min-h-screen">
@@ -460,7 +561,7 @@
 
     <main id="contentArea" class="flex-grow overflow-y-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
         <section id="journeySection" class="content-section">
-            <h2 class="ios-header">Hành trình của hai đứa</h2>
+            <h2 class="ios-header"></h2>
             <div class="space-y-3 sm:space-y-4 text-center">
                 <p id="fixedStartDateDisplay" class="text-sm sm:text-md text-gray-700 mb-3 sm:mb-4">Đang tải...</p>
                 <div id="relationshipDuration" class="py-4 sm:py-6 bg-pink-50 rounded-lg"> <p class="text-gray-600">Đang tính toán...</p> </div>
@@ -472,62 +573,59 @@
         </section>
 
         <section id="timelineSection" class="content-section hidden">
-            <h2 class="ios-header">Dòng thời gian Kỷ Niệm</h2>
+            <h2 class="ios-header"></h2>
             <p class="text-center text-sm text-gray-500 mb-4 sm:mb-6">Những cột mốc đáng nhớ của chúng ta.</p>
-            <div id="timelineEventsContainer" class="relative"> <p class="text-gray-500 text-center py-4">Đang tải dòng thời gian...</p> </div>
+            <div id="timelineEventsContainer" class="relative"> 
+                </div>
         </section>
 
         <section id="loveLetterSection" class="content-section hidden">
             <div id="loveLetterPlaceholder">
-                <h2 class="ios-header">Đúng 6 tháng mới có thư nka ❤️</h2>
+                <h2 class="ios-header"></h2>
                 <p id="letterCountdown" class="text-center text-gray-600 mt-4 text-md sm:text-lg"></p>
             </div>
             <div id="actualLoveLetter" class="hidden">
-                <h2 class="ios-header">❤️</h2>
-                <div id="loveLetterContent" class="love-letter-text prose max-w-none">
-                    <p>❤️</p>
-                    <p>❤️</p>
-                    <p>❤️</p>
-                    <p>❤️</p>
-                </div>
+                <h2 class="ios-header">❤️</h2> <div id="loveLetterContent" class="love-letter-text prose max-w-none">
+                    <p>💖</p>
+                    <p>💖</p>
+                    <p>💖</p>
+                    <p>💖</p>
+                    <p class="text-right mt-6 font-semibold">💖</p> </div>
             </div>
         </section>
 
         <section id="memoriesSection" class="content-section hidden">
-            <h2 class="ios-header">Khoảnh khắc đáng nhớ</h2>
+            <h2 class="ios-header"></h2>
             <p class="text-center text-sm text-gray-500 mb-4">Những tấm ảnh xinh đã chụp cùng nhau</p>
             <div id="photoMemoriesContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 max-h-[calc(100vh-280px)] sm:max-h-[calc(100vh-250px)] overflow-y-auto p-1">
-                 <p class="text-gray-500 text-center py-4 col-span-full">Đang tải kỷ niệm...</p>
-            </div>
+                 </div>
         </section>
     </main>
 
     <nav class="bg-white border-t border-gray-200 p-2 sm:p-3 sticky bottom-0 z-20 shadow-top-md">
         <div class="flex justify-around max-w-lg mx-auto">
-            <button id="navJourney" class="flex flex-col items-center text-pink-500 p-2 rounded-lg hover:bg-pink-50 transition focus:outline-none focus:bg-pink-100" aria-label="Hành trình">
+            <button id="navJourney" class="flex flex-col items-center text-pink-500 p-2 rounded-lg hover:bg-pink-50 transition focus:outline-none focus:bg-pink-100 focus:ring-2 focus:ring-pink-400 focus:ring-offset-1" aria-label="Hành trình" aria-current="page">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M21.29 14.7a2.43 2.43 0 0 0-2.65-.52c-.3.12-.57.3-.8.53l-.34.34-.35-.34a2.43 2.43 0 0 0-2.65-.53c-.3.12-.56.3-.79.53-.95.94-1 2.53.2 3.74L17.5 21l3.6-3.55c1.2-1.21 1.14-2.8.19-3.74Z"/></svg>
                 <span class="text-xs mt-1">Hành trình</span>
             </button>
-            <button id="navTimeline" class="flex flex-col items-center text-gray-500 p-2 rounded-lg hover:bg-pink-50 transition focus:outline-none focus:bg-pink-100" aria-label="Cột mốc">
+            <button id="navTimeline" class="flex flex-col items-center text-gray-500 p-2 rounded-lg hover:bg-pink-50 transition focus:outline-none focus:bg-pink-100 focus:ring-2 focus:ring-pink-400 focus:ring-offset-1" aria-label="Cột mốc">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M12 6V3"/><path d="M8 3h8"/></svg>
                 <span class="text-xs mt-1">Cột mốc</span>
             </button>
-            <button id="navLetter" class="flex flex-col items-center text-gray-500 p-2 rounded-lg hover:bg-pink-50 transition focus:outline-none focus:bg-pink-100" aria-label="Thư gửi em">
+            <button id="navLetter" class="flex flex-col items-center text-gray-500 p-2 rounded-lg hover:bg-pink-50 transition focus:outline-none focus:bg-pink-100 focus:ring-2 focus:ring-pink-400 focus:ring-offset-1" aria-label="Thư gửi em">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
                 <span class="text-xs mt-1">Thư gửi em</span>
             </button>
-            <button id="navMemories" class="flex flex-col items-center text-gray-500 p-2 rounded-lg hover:bg-pink-50 transition focus:outline-none focus:bg-pink-100" aria-label="Kỷ niệm">
+            <button id="navMemories" class="flex flex-col items-center text-gray-500 p-2 rounded-lg hover:bg-pink-50 transition focus:outline-none focus:bg-pink-100 focus:ring-2 focus:ring-pink-400 focus:ring-offset-1" aria-label="Kỷ niệm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                 <span class="text-xs mt-1">Kỷ niệm</span>
             </button>
         </div>
     </nav>
 
-    <!-- Modals at the end of the body -->
-    <div id="imageLightbox" class="modal-base modal-hidden"> <!-- Added modal-base, modal-hidden -->
+    <div id="imageLightbox" class="modal-base modal-hidden" role="dialog" aria-modal="true" aria-labelledby="lightboxCaption">
         <div class="lightbox-content">
-            <img id="lightboxImage" src="" alt="Kỷ niệm phóng to" >
-            <div class="lightbox-details">
+            <img id="lightboxImage" src="" alt="Kỷ niệm phóng to" > <div class="lightbox-details">
                 <h3 id="lightboxCaption"></h3> <p id="lightboxDate"></p> <p id="lightboxLocation"></p>
                 <div class="border-t border-gray-200 pt-2 md:pt-3 mt-2 md:mt-3">
                     <h4 class="text-sm font-semibold text-gray-800 mb-1">Câu chuyện nhỏ:</h4> <p id="lightboxStory"></p>
@@ -537,16 +635,15 @@
         <button id="closeLightboxButton" aria-label="Đóng lightbox">&times;</button>
     </div>
 
-    <div id="timelineEventModal" class="modal-base modal-hidden"> <!-- Added modal-base, modal-hidden -->
+    <div id="timelineEventModal" class="modal-base modal-hidden" role="dialog" aria-modal="true" aria-labelledby="timelineEventModalTitle">
         <div class="timeline-modal-content">
             <h3 id="timelineEventModalTitle"></h3> <p id="timelineEventModalDate"></p>
-            <img id="timelineEventModalImage" src="" alt="" class="hidden">
-            <p id="timelineEventModalDescription"></p>
+            <img id="timelineEventModalImage" src="" alt="" class="hidden"> <p id="timelineEventModalDescription"></p>
             <button id="closeTimelineEventModalButton" class="mt-4">Đóng</button>
         </div>
     </div>
 
-    <div id="feedbackModal" class="modal-base modal-hidden"> <!-- Added modal-base, modal-hidden (if used) -->
+    <div id="feedbackModal" class="modal-base modal-hidden" role="alertdialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
             <h3 id="modalTitle" class="text-xl font-semibold mb-2 text-gray-800"></h3> <p id="modalMessage" class="text-gray-700 mb-4"></p>
             <button id="closeModalButtonFeedback" class="w-full bg-pink-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-pink-600 transition-colors">OK</button>
