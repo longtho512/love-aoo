@@ -29,7 +29,10 @@
 
         // --- App State ---
         let currentView = 'journey';
-        const relationshipStartDate = "2025-01-21"; // PLEASE ADJUST THIS DATE TO YOUR ACTUAL START DATE for testing letter reveal
+        // IMPORTANT: Adjust this date to your actual relationship start date.
+        // For testing the "before 6 months" countdown, set it to a future date or a date less than 6 months ago.
+        // For testing the "after 6 months" letter reveal, set it to a date more than 6 months ago.
+        const relationshipStartDate = "2025-01-21"; // Example: "2023-12-05" to show letter, "2025-01-05" to show countdown
         let photoMemories = [];
         
         const timelineEventsData = [
@@ -61,31 +64,37 @@
             const container = document.getElementById('photoMemoriesContainer');
             if (!container) return;
             container.innerHTML = ''; // Clear previous content
-            container.appendChild(createLoadingSpinner("Đang tải kỷ niệm ảnh...")); // ADDED: Show spinner
+            container.appendChild(createLoadingSpinner("Đang tải kỷ niệm ảnh...")); 
 
             try {
-                const response = await fetch('./photoMemories.json'); // Ensure this file exists and is accessible
+                // IMPORTANT: Create a 'photoMemories.json' file in the same directory as this HTML file.
+                // See example structure in comments or previous responses.
+                const response = await fetch('./photoMemories.json'); 
                 if (!response.ok) {
-                    const errorText = `HTTP error! status: ${response.status}. Path: ./photoMemories.json`;
+                    const errorText = `HTTP error! status: ${response.status}. Path: ./photoMemories.json. Make sure the file exists and is accessible.`;
                     console.error(errorText);
                     throw new Error(errorText);
                 }
                 const data = await response.json();
                 photoMemories = data.map((memory, index) => ({ ...memory, internalId: memory.id || `mem-${index}` }));
                 console.log("Photo memories loaded:", photoMemories.length);
+                container.dataset.loadError = "false"; // Mark as successfully loaded or attempted
             } catch (error) {
                 console.error("Error loading or parsing photo memories:", error);
                 photoMemories = [];
-                if (container) container.innerHTML = `<p class="text-red-500 text-center py-4 col-span-full">Không thể tải kỷ niệm ảnh. Lỗi: ${error.message}</p>`;
+                if (container) {
+                    container.innerHTML = `<p class="text-red-500 text-center py-4 col-span-full">Không thể tải kỷ niệm ảnh. Lỗi: ${error.message}<br>Hãy chắc chắn file 'photoMemories.json' tồn tại và đúng định dạng.</p>`;
+                    container.dataset.loadError = "true"; // Mark as error
+                }
             }
-            renderPhotoMemories(); // Render even if empty or error (render will handle it)
+            renderPhotoMemories(); 
         }
 
         async function loadInitialData() {
             console.log("Loading initial data...");
-            await loadPhotoMemories(); // This will call renderPhotoMemories internally
+            await loadPhotoMemories(); 
             updateJourneyView();
-            renderTimelineEvents(); // This will display its own loader
+            renderTimelineEvents(); 
         }
 
         // --- UI Rendering and Updates ---
@@ -93,29 +102,39 @@
             console.log("Switching to view:", viewName);
             currentView = viewName;
             Object.keys(sections).forEach(key => {
-                if (sections[key]) sections[key].classList.toggle('hidden', key !== viewName);
-                else console.warn(`Section element for '${key}' not found.`);
+                if (sections[key]) { // Check if the section DOM element was found
+                    sections[key].classList.toggle('hidden', key !== viewName);
+                } else {
+                    console.warn(`Section element for '${key}' was not found in DOM during init. Cannot switch.`);
+                }
             });
             Object.keys(navButtons).forEach(key => {
                 if (navButtons[key]) {
                     navButtons[key].classList.toggle('text-pink-500', key === viewName);
                     navButtons[key].classList.toggle('text-gray-500', key !== viewName);
-                    navButtons[key].setAttribute('aria-current', key === viewName ? 'page' : 'false'); // ACCESSIBILITY
+                    navButtons[key].setAttribute('aria-current', key === viewName ? 'page' : 'false'); 
                 } else console.warn(`Nav button element for '${key}' not found.`);
             });
+
             if (viewName === 'journey') updateJourneyView();
-            // renderPhotoMemories is called by loadPhotoMemories or if switching back and it was already loaded
-            if (viewName === 'memories' && photoMemories.length > 0 && document.getElementById('photoMemoriesContainer').innerHTML.includes('Đang tải')) {
-                 renderPhotoMemories(); // Re-render if it was showing loader from a failed previous attempt
-            } else if (viewName === 'memories' && !photoMemories.length && !document.getElementById('photoMemoriesContainer').innerHTML.includes('Không thể tải')) {
-                // If memories tab is clicked and photoMemories is empty AND it's not already showing an error/loading.
-                // This handles cases where photoMemories.json might be empty or initial load failed.
-                renderPhotoMemories();
+            
+            if (viewName === 'memories') {
+                // Re-render if it was showing loader or error from a previous attempt.
+                // Or if photoMemories is empty and no error/loader shown.
+                 const photoContainer = document.getElementById('photoMemoriesContainer');
+                 if (photoContainer && (photoContainer.innerHTML.includes('Đang tải') || photoContainer.dataset.loadError === "true" || photoMemories.length === 0)) {
+                    renderPhotoMemories();
+                 }
+            }
+            if (viewName === 'timeline') {
+                // If timeline data is static, it might already be rendered.
+                // If it depends on dynamic data not yet loaded, ensure it's re-rendered.
+                // For now, renderTimelineEvents is called once in loadInitialData.
+                // If you need to re-render it on tab switch, call it here.
             }
 
             if (viewName === 'letter') setupLoveLetterReveal();
             
-            // ADDED: Smooth scroll to top of content area
             if (contentArea) {
                 contentArea.scrollTo({ top: 0, behavior: 'smooth' });
             }
@@ -161,34 +180,50 @@
         }
 
         function setupLoveLetterReveal() {
-            if (!loveLetterPlaceholder || !actualLoveLetter || !letterCountdownEl) return;
+            // Ensure elements are available before proceeding
+            if (!loveLetterPlaceholder || !actualLoveLetter || !letterCountdownEl || !sections.letter) {
+                console.warn("Love letter elements or section not ready for setupLoveLetterReveal.");
+                return;
+            }
             const startDate = new Date(relationshipStartDate + "T00:00:00");
             if (isNaN(startDate.getTime())) {
                 loveLetterPlaceholder.innerHTML = "<p class='text-red-500 text-center'>Lỗi cấu hình ngày.</p>";
-                actualLoveLetter.classList.add('hidden'); return;
+                actualLoveLetter.classList.add('hidden'); 
+                return;
             }
-            const sixMonthAnniversary = new Date(startDate); sixMonthAnniversary.setMonth(startDate.getMonth() + 6);
+            const sixMonthAnniversary = new Date(startDate); 
+            sixMonthAnniversary.setMonth(startDate.getMonth() + 6);
             const now = new Date();
+
             if (now >= sixMonthAnniversary) {
-                loveLetterPlaceholder.classList.add('hidden'); actualLoveLetter.classList.remove('hidden');
+                loveLetterPlaceholder.classList.add('hidden'); 
+                actualLoveLetter.classList.remove('hidden');
             } else {
-                loveLetterPlaceholder.classList.remove('hidden'); actualLoveLetter.classList.add('hidden');
-                const daysLeft = Math.ceil((sixMonthAnniversary.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                loveLetterPlaceholder.classList.remove('hidden'); 
+                actualLoveLetter.classList.add('hidden');
+                const diffTime = sixMonthAnniversary.getTime() - now.getTime();
+                const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
                 if (daysLeft > 1) letterCountdownEl.textContent = `Còn tận ${daysLeft} ngày nữa em mới đọc được cơ lêu lêu =)) 🥰`;
                 else if (daysLeft === 1) letterCountdownEl.textContent = `Ngày mai đọc được ùi em bé nhớ check nhá ❤️`;
-                else letterCountdownEl.textContent = `Hôm nay là ngày gìiiiiiiiii 💖`;
+                else if (daysLeft <= 0) { // Should ideally be caught by now >= sixMonthAnniversary, but as a fallback
+                     loveLetterPlaceholder.classList.add('hidden'); 
+                     actualLoveLetter.classList.remove('hidden');
+                     letterCountdownEl.textContent = `Hôm nay là ngày gìiiiiiiiii �`; // Or clear it
+                } else { // daysLeft is 0, meaning today is the day but before the exact time
+                    letterCountdownEl.textContent = `Hôm nay là ngày gìiiiiiiiii 💖`;
+                }
             }
         }
 
         function renderPhotoMemories() {
             const container = document.getElementById('photoMemoriesContainer');
             if (!container) return;
-            container.innerHTML = ''; // Clear previous content (like spinner or error message)
+            container.innerHTML = ''; 
 
             if (photoMemories.length === 0) {
-                // Check if it was an error or genuinely no memories
-                if (container.dataset.loadError) { // Assuming we set this dataset if fetch failed before
-                     container.innerHTML = `<p class="text-red-500 text-center py-4 col-span-full">Không thể tải kỷ niệm ảnh. Vui lòng thử lại sau.</p>`;
+                if (container.dataset.loadError === "true") { 
+                     // Error message already set by loadPhotoMemories
                 } else {
                      container.innerHTML = '<p class="text-gray-500 text-center py-4 col-span-full">Chưa có kỷ niệm ảnh nào được thêm.</p>';
                 }
@@ -197,12 +232,10 @@
 
             photoMemories.forEach(memory => {
                 const memoryEl = document.createElement('div');
-                // MODIFIED: Added focus styling, tabindex, role, and keydown listener for accessibility
                 memoryEl.className = 'bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden relative group cursor-pointer focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 focus:ring-offset-white';
-                memoryEl.tabIndex = 0; // Make it focusable
+                memoryEl.tabIndex = 0; 
                 memoryEl.setAttribute('role', 'button');
                 memoryEl.setAttribute('aria-label', `Xem chi tiết kỷ niệm: ${memory.caption || 'Không có chú thích'}`);
-
                 memoryEl.addEventListener('click', () => openLightbox(memory.internalId));
                 memoryEl.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -213,7 +246,6 @@
 
                 const img = document.createElement('img');
                 img.src = memory.imageUrl;
-                // MODIFIED: More descriptive alt text
                 img.alt = `Ảnh kỷ niệm: ${memory.caption || 'không có chú thích'}${memory.location ? ` tại ${memory.location}` : ''}`;
                 img.className = 'w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105';
                 img.onerror = () => { 
@@ -235,25 +267,22 @@
             });
         }
 
-        // --- Timeline Functions ---
         function renderTimelineEvents() {
             const container = document.getElementById('timelineEventsContainer');
             if (!container) { console.error("timelineEventsContainer not found."); return; }
-            container.innerHTML = ''; // Clear previous
-            container.appendChild(createLoadingSpinner("Đang tải dòng thời gian...")); // ADDED: Show spinner
+            container.innerHTML = ''; 
+            container.appendChild(createLoadingSpinner("Đang tải dòng thời gian...")); 
 
-            // Simulate a short delay for spinner visibility if data is already available
-            setTimeout(() => {
+            setTimeout(() => { // Simulate delay only if photoMemories might still be loading
                 if (timelineEventsData.length === 0) {
                     container.innerHTML = '<p class="text-gray-500 text-center py-4">Chưa có sự kiện nào trong dòng thời gian.</p>';
                     return;
                 }
-                container.innerHTML = ''; // Clear spinner before adding events
+                container.innerHTML = ''; 
                 
                 timelineEventsData.forEach((event, index) => {
                     const eventWrapper = document.createElement('div');
-                    // MODIFIED: Added focus styling, tabindex, role, and keydown listener
-                    eventWrapper.className = 'relative group cursor-pointer focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-1 focus:ring-offset-white rounded-lg'; // Added rounded-lg for better focus ring visibility
+                    eventWrapper.className = 'relative group cursor-pointer focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-1 focus:ring-offset-white rounded-lg'; 
                     eventWrapper.tabIndex = 0;
                     eventWrapper.setAttribute('role', 'button');
                     eventWrapper.setAttribute('aria-label', `Xem chi tiết sự kiện: ${event.title}`);
@@ -275,7 +304,6 @@
                     if (event.photoId) {
                         const photo = photoMemories.find(p => p.internalId === event.photoId);
                         if (photo && photo.imageUrl) {
-                            // MODIFIED: More descriptive alt text
                             photoHtml = `<img src="${photo.imageUrl}" alt="Ảnh minh họa cho sự kiện: ${event.title}" class="mt-3 rounded-md max-h-40 object-cover w-full sm:w-auto transition-transform duration-300 group-hover:scale-105">`;
                         }
                     }
@@ -293,7 +321,7 @@
                     `;
                     eventWrapper.appendChild(cardEl);
                     eventWrapper.addEventListener('click', () => openTimelineEventModal(event));
-                    eventWrapper.addEventListener('keydown', (e) => { // ACCESSIBILITY
+                    eventWrapper.addEventListener('keydown', (e) => { 
                         if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
                             openTimelineEventModal(event);
@@ -301,7 +329,7 @@
                     });
                     container.appendChild(eventWrapper);
                 });
-            }, photoMemories.length > 0 ? 0 : 50); // If photoMemories (used for images) isn't loaded, slight delay. Otherwise, render fast.
+            }, photoMemories.length > 0 || document.getElementById('photoMemoriesContainer')?.dataset.loadError === "true" ? 0 : 100); // Delay timeline rendering if photos are still loading and no error.
         }
 
         function openTimelineEventModal(eventData) {
@@ -319,7 +347,6 @@
             const linkedPhoto = eventData.photoId ? photoMemories.find(p => p.internalId === eventData.photoId) : null;
             if (linkedPhoto && linkedPhoto.imageUrl) {
                 timelineEventModalImage.src = linkedPhoto.imageUrl;
-                // MODIFIED: More descriptive alt text
                 timelineEventModalImage.alt = `Hình ảnh cho sự kiện: ${eventData.title}`;
                 timelineEventModalImage.classList.remove('hidden');
             } else {
@@ -331,8 +358,7 @@
             timelineEventModal.classList.remove('modal-hidden'); 
             timelineEventModal.classList.add('modal-visible');  
             document.body.style.overflow = 'hidden';
-            // MODIFIED: Focus on the modal content or close button for accessibility
-            closeTimelineEventModalButton.focus(); 
+            if(closeTimelineEventModalButton) closeTimelineEventModalButton.focus(); 
             console.log("Timeline modal should be displayed.");
         }
 
@@ -344,13 +370,11 @@
             console.log("Timeline modal closed.");
         }
 
-        // --- Lightbox Functions ---
         function openLightbox(memoryInternalId) {
             const memory = photoMemories.find(m => m.internalId === memoryInternalId);
             if (!memory || !lightbox) return;
             if (lightboxImage) { 
                 lightboxImage.src = memory.imageUrl; 
-                // MODIFIED: More descriptive alt text
                 lightboxImage.alt = `Ảnh phóng to: ${memory.caption || 'Không có chú thích'}${memory.location ? ` tại ${memory.location}` : ''}`; 
             }
             if (lightboxCaption) lightboxCaption.textContent = memory.caption || "Không có chú thích";
@@ -368,7 +392,6 @@
             lightbox.classList.remove('modal-hidden'); 
             lightbox.classList.add('modal-visible');   
             document.body.style.overflow = 'hidden';
-            // MODIFIED: Focus on the close button for accessibility
             if(closeLightboxButton) closeLightboxButton.focus();
         }
 
@@ -379,11 +402,12 @@
             document.body.style.overflow = 'auto';
         }
 
-        // --- Event Listeners and Initialization ---
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("DOM fully loaded and parsed. Initializing page...");
 
-            contentArea = document.getElementById('contentArea'); // sections.letter = document.getElementById('loveLetterSection');
+            // Assign DOM elements
+            contentArea = document.getElementById('contentArea');
+            sections.letter = document.getElementById('loveLetterSection'); // *** FIXED: Uncommented this line ***
             sections.memories = document.getElementById('memoriesSection');
             sections.journey = document.getElementById('journeySection');
             sections.timeline = document.getElementById('timelineSection'); 
@@ -408,8 +432,10 @@
             timelineEventModalImage = document.getElementById('timelineEventModalImage');
             closeTimelineEventModalButton = document.getElementById('closeTimelineEventModalButton');
 
+            // Check if all core elements were found
             const allCoreElementsPresent = 
-                contentArea && // sections.letter && sections.memories && sections.journey && sections.timeline &&
+                contentArea && 
+                sections.letter && sections.memories && sections.journey && sections.timeline && // *** FIXED: Uncommented sections.letter here ***
                 navButtons.letter && navButtons.memories && navButtons.journey && navButtons.timeline &&
                 lightbox && lightboxImage && lightboxCaption && lightboxDate && lightboxLocation && lightboxStory && closeLightboxButton && 
                 loveLetterPlaceholder && actualLoveLetter && letterCountdownEl &&
@@ -419,12 +445,17 @@
             if (!allCoreElementsPresent) {
                 let missingElements = "";
                 if (!contentArea) missingElements += "contentArea, ";
-                if (!sections.letter) missingElements += "sections.letter, ";
-                // ... (add all checks here for debugging)
+                if (!sections.letter) missingElements += "sections.letter, "; // This will now correctly report if it's truly missing
+                if (!sections.memories) missingElements += "sections.memories, ";
+                if (!sections.journey) missingElements += "sections.journey, ";
+                if (!sections.timeline) missingElements += "sections.timeline, ";
+                if (!loveLetterPlaceholder) missingElements += "loveLetterPlaceholder, ";
+                if (!letterCountdownEl) missingElements += "letterCountdownEl, ";
+                // ... (add more checks as needed for detailed debugging)
                 if (!timelineEventModalImage) missingElements += "timelineEventModalImage, ";
 
-                console.error(`CRITICAL FAILURE: One or more core UI elements are missing from the DOM. Missing: ${missingElements}. Page cannot initialize correctly. Please check all element IDs in your HTML and script.`);
-                document.body.innerHTML = `<p style='color:red; font-size:1.2em; padding:20px; text-align:center;'>Lỗi nghiêm trọng: Không tìm thấy các thành phần giao diện cần thiết. Trang không thể hoạt động. Vui lòng kiểm tra mã HTML. Thiếu: ${missingElements}</p>`;
+                console.error(`CRITICAL FAILURE: One or more core UI elements are missing from the DOM. Missing: ${missingElements.slice(0, -2)}. Page cannot initialize correctly. Please check all element IDs in your HTML and script.`);
+                document.body.innerHTML = `<p style='color:red; font-size:1.2em; padding:20px; text-align:center;'>Lỗi nghiêm trọng: Không tìm thấy các thành phần giao diện cần thiết. Trang không thể hoạt động. Vui lòng kiểm tra mã HTML. Thiếu: ${missingElements.slice(0,-2)}</p>`;
                 return; 
             }
             console.log("All core UI elements successfully assigned from DOM.");
@@ -434,10 +465,15 @@
                 await loadInitialData(); 
                 console.log("Initial data loaded and initial renders complete.");
                 
-                setupLoveLetterReveal();
-                console.log("Love letter reveal setup.");
+                // Call setupLoveLetterReveal AFTER initial data load and view switch if letter is the default view
+                // or when switching to the letter view.
+                // If currentView is 'letter' initially, switchView will call it.
+                if (currentView !== 'letter') { 
+                  setupLoveLetterReveal(); // Ensure it's set up if not the initial view.
+                }
+                console.log("Love letter reveal setup initiated.");
 
-                switchView(currentView);
+                switchView(currentView); // This will call setupLoveLetterReveal if currentView is 'letter'
                 console.log("Initial view switched to:", currentView);
 
             } catch (e) {
@@ -465,23 +501,20 @@
             if (closeTimelineEventModalButton) closeTimelineEventModalButton.addEventListener('click', closeTimelineEventModal);
             if (timelineEventModal) timelineEventModal.addEventListener('click', (event) => { if (event.target === timelineEventModal) closeTimelineEventModal(); });
 
-            // Also close modals on 'Escape' key press
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape') {
-                    if (lightbox && lightbox.classList.contains('modal-visible')) {
-                        closeLightbox();
-                    }
-                    if (timelineEventModal && timelineEventModal.classList.contains('modal-visible')) {
-                        closeTimelineEventModal();
-                    }
+                    if (lightbox && lightbox.classList.contains('modal-visible')) closeLightbox();
+                    if (timelineEventModal && timelineEventModal.classList.contains('modal-visible')) closeTimelineEventModal();
                 }
             });
 
             setInterval(() => {
                 if (document.hidden) return; 
                 updateJourneyView();
-                setupLoveLetterReveal();
-            }, 60000);
+                if (currentView === 'letter' || (sections.letter && !sections.letter.classList.contains('hidden'))) {
+                     setupLoveLetterReveal(); // Update countdown if letter section is active
+                }
+            }, 60000); // Update every minute
             console.log("Page initialization complete. Event listeners and periodic updates set up.");
         });
     </script>
@@ -497,23 +530,15 @@
         .love-letter-text p { @apply mb-4 leading-relaxed text-gray-700; }
         nav .flex > button { @apply w-1/4; }
         
-        /* ACCESSIBILITY NOTE: Check color contrast for text elements (e.g., text-gray-500 on light backgrounds) 
-           using a contrast checker tool to ensure WCAG AA compliance (4.5:1 for normal text). */
-
-        /* MODAL Base Styles */
         .modal-base {
             position: fixed; top: 0; right: 0; bottom: 0; left: 0;
             background-color: rgba(0,0,0,0.75);
-            padding: 1rem; /* p-4 */
-            z-index: 50; 
-            display: flex; 
-            align-items: center;
-            justify-content: center;
+            padding: 1rem; z-index: 50; display: flex; 
+            align-items: center; justify-content: center;
         }
         .modal-hidden { display: none !important; } 
         .modal-visible { display: flex !important; }
 
-        /* Image Lightbox */
         #imageLightbox { z-index: 50; }
         .lightbox-content { @apply bg-white rounded-lg shadow-xl p-4 md:p-6 max-w-lg sm:max-w-xl md:max-w-3xl w-full max-h-[90vh] overflow-y-auto flex flex-col md:flex-row gap-4; }
         #lightboxImage { @apply w-full md:w-1/2 h-auto max-h-[50vh] md:max-h-[calc(80vh-4rem)] object-contain rounded-md mb-4 md:mb-0; }
@@ -521,36 +546,25 @@
         #lightboxCaption { @apply text-lg sm:text-xl font-semibold text-pink-600 mb-2 break-words; }
         #lightboxDate, #lightboxLocation { @apply text-xs sm:text-sm text-gray-600 mb-1; }
         #lightboxStory { @apply text-sm sm:text-base text-gray-700 mt-2 md:mt-3 leading-relaxed flex-grow overflow-y-auto pr-1 md:pr-2; }
-        /* MODIFIED: Added focus state for close button */
         #closeLightboxButton { @apply absolute top-2 right-2 sm:top-3 sm:right-3 text-white bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full p-0 text-2xl sm:text-3xl focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-1 focus:ring-offset-black; width: 30px; height: 30px; sm:width: 36px; sm:height: 36px; display: flex; align-items: center; justify-content: center; line-height: 1; }
         
-        /* Timeline Styles */
         #timelineSection .ios-header { @apply text-pink-700;}
         #timelineEventsContainer { @apply space-y-0; } 
         
-        /* Timeline Event Modal */
         #timelineEventModal { z-index: 55; }
         .timeline-modal-content { @apply bg-white rounded-lg shadow-xl p-5 sm:p-6 max-w-md w-full max-h-[85vh] overflow-y-auto text-center sm:text-left; }
         #timelineEventModalTitle { @apply text-xl sm:text-2xl font-bold text-pink-600 mb-2; }
         #timelineEventModalDate { @apply text-sm text-gray-500 mb-3; }
         #timelineEventModalDescription { @apply text-base text-gray-700 mb-4 leading-relaxed; }
         #timelineEventModalImage { @apply rounded-lg max-h-60 w-auto mx-auto sm:mx-0 mb-4 object-contain; }
-        /* MODIFIED: Enhanced focus state for close button */
         #closeTimelineEventModalButton { @apply mt-4 w-full sm:w-auto bg-pink-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-pink-600 transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2; }
 
-        /* ADDED: Loading Spinner Styles */
         .loading-spinner {
-            border: 4px solid #fce7f3; /* Light pink track */
-            border-top: 4px solid #f472b6; /* Pink spinner */
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            border: 4px solid #fce7f3; border-top: 4px solid #f472b6; 
+            border-radius: 50%; width: 40px; height: 40px;
             animation: spin 1s linear infinite;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-pink-50 flex flex-col min-h-screen">
@@ -561,7 +575,8 @@
 
     <main id="contentArea" class="flex-grow overflow-y-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
         <section id="journeySection" class="content-section">
-            <h2 class="ios-header"></h2>
+            <!-- Restored header text -->
+            <h2 class="ios-header">Hành trình của hai đứa</h2>
             <div class="space-y-3 sm:space-y-4 text-center">
                 <p id="fixedStartDateDisplay" class="text-sm sm:text-md text-gray-700 mb-3 sm:mb-4">Đang tải...</p>
                 <div id="relationshipDuration" class="py-4 sm:py-6 bg-pink-50 rounded-lg"> <p class="text-gray-600">Đang tính toán...</p> </div>
@@ -573,24 +588,30 @@
         </section>
 
         <section id="timelineSection" class="content-section hidden">
-            <h2 class="ios-header"></h2>
+             <!-- Restored header text -->
+            <h2 class="ios-header">Dòng thời gian Kỷ Niệm</h2>
             <p class="text-center text-sm text-gray-500 mb-4 sm:mb-6">Những cột mốc đáng nhớ của chúng ta.</p>
             <div id="timelineEventsContainer" class="relative"> 
-                </div>
+                <!-- JS will inject loader here -->
+            </div>
         </section>
 
         <section id="loveLetterSection" class="content-section hidden">
             <div id="loveLetterPlaceholder">
-                <h2 class="ios-header">💖</h2>
+                <!-- Restored header text -->
+                <h2 class="ios-header">Đúng 6 tháng mới có thư nka ❤️</h2>
                 <p id="letterCountdown" class="text-center text-gray-600 mt-4 text-md sm:text-lg"></p>
             </div>
             <div id="actualLoveLetter" class="hidden">
-                <h2 class="ios-header">Thư gửi Em Yêu ❤️</h2> <div id="loveLetterContent" class="love-letter-text prose max-w-none">
-                    <p>💖</p>
-                    <p>💖</p>
-                    <p>💖</p>
-                    <p>💖</p>
-                    <p class="text-right mt-6 font-semibold">💖</p> </div>
+                <h2 class="ios-header">Thư gửi Em Yêu ❤️</h2> 
+                <div id="loveLetterContent" class="love-letter-text prose max-w-none">
+                    <!-- Replace with your actual letter -->
+                    <p>💖 Em yêu của anh,</p>
+                    <p>💖 Vậy là thấm thoắt đã 6 tháng chúng mình chính thức ở bên nhau rồi đó. Nhanh thật em nhỉ?</p>
+                    <p>💖 Cảm ơn em đã đến bên anh. Mong rằng chúng ta sẽ còn nhiều, thật nhiều những "6 tháng" nữa!</p>
+                    <p>💖 Yêu em rất nhiều!</p>
+                    <p class="text-right mt-6 font-semibold">💖 - Chồng yêu của em -</p> 
+                </div>
             </div>
         </section>
 
@@ -598,7 +619,8 @@
             <h2 class="ios-header">Khoảnh khắc đáng nhớ</h2>
             <p class="text-center text-sm text-gray-500 mb-4">Những tấm ảnh xinh đã chụp cùng nhau</p>
             <div id="photoMemoriesContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 max-h-[calc(100vh-280px)] sm:max-h-[calc(100vh-250px)] overflow-y-auto p-1">
-                 </div>
+                <!-- JS will inject loader here -->
+            </div>
         </section>
     </main>
 
@@ -625,7 +647,8 @@
 
     <div id="imageLightbox" class="modal-base modal-hidden" role="dialog" aria-modal="true" aria-labelledby="lightboxCaption">
         <div class="lightbox-content">
-            <img id="lightboxImage" src="" alt="Kỷ niệm phóng to" > <div class="lightbox-details">
+            <img id="lightboxImage" src="" alt="Kỷ niệm phóng to" > 
+            <div class="lightbox-details">
                 <h3 id="lightboxCaption"></h3> <p id="lightboxDate"></p> <p id="lightboxLocation"></p>
                 <div class="border-t border-gray-200 pt-2 md:pt-3 mt-2 md:mt-3">
                     <h4 class="text-sm font-semibold text-gray-800 mb-1">Câu chuyện nhỏ:</h4> <p id="lightboxStory"></p>
@@ -638,7 +661,8 @@
     <div id="timelineEventModal" class="modal-base modal-hidden" role="dialog" aria-modal="true" aria-labelledby="timelineEventModalTitle">
         <div class="timeline-modal-content">
             <h3 id="timelineEventModalTitle"></h3> <p id="timelineEventModalDate"></p>
-            <img id="timelineEventModalImage" src="" alt="" class="hidden"> <p id="timelineEventModalDescription"></p>
+            <img id="timelineEventModalImage" src="" alt="" class="hidden"> 
+            <p id="timelineEventModalDescription"></p>
             <button id="closeTimelineEventModalButton" class="mt-4">Đóng</button>
         </div>
     </div>
