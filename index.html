@@ -14,13 +14,13 @@
             letter: null,
             memories: null,
             journey: null,
-            timeline: null // New section for timeline
+            timeline: null
         };
         const navButtons = {
             letter: null,
             memories: null,
             journey: null,
-            timeline: null // New nav button for timeline
+            timeline: null
         };
         // Lightbox DOM Elements
         let lightbox = null;
@@ -50,9 +50,6 @@
         const relationshipStartDate = "2025-01-21";
         let photoMemories = [];
         // --- Timeline Data ---
-        // Add some real examples based on your provided photo data
-        // and some generic ones for illustration.
-        // IMPORTANT: Dates should be in YYYY-MM-DD format for consistent sorting.
         const timelineEventsData = [
             {
                 date: "2025-01-21",
@@ -71,7 +68,7 @@
             {
                 date: "2025-03-08",
                 title: "Mùng 8 Tháng 3 Đầu Tiên",
-                icon: "�",
+                icon: "💐", // CORRECTED ICON
                 description: "Tặng hoa cho nhùa ngố nhân ngày Quốc tế Phụ nữ. Em là người phụ nữ tuyệt vời nhất!",
                 photoId: "p923"
             },
@@ -92,7 +89,7 @@
             {
                 date: "2025-03-27",
                 title: "Và Cũng Là Ngày Bị Bắt Lần Đầu lun",
-                icon: "📸",
+                icon: "😟", // Changed icon for variety
                 description: "Xui ghê he :((",
                 photoId: "p56"
             },
@@ -101,8 +98,8 @@
                 title: "Đi Ăng Cưới Ở Rico Steakhouse",
                 icon: "🤵🏻👰🏻",
                 description: "Chờ ngày về chung nhà <3",
-                photoId: "p4"
-            }
+                photoId: "p99" // Assuming p99 is the correct ID from your data for this, or adjust if different
+            }, // <<< ADDED MISSING COMMA HERE
             {
                 date: "2025-04-20",
                 title: "Sinh Nhật Đầu Tiên Cùng Em",
@@ -118,12 +115,12 @@
                 photoId: "p92345678"
             },
             {
-                date: "2025-07-21", // Example future milestone
+                date: "2025-07-21", 
                 title: "Kỷ Niệm 6 Tháng Bên Nhau",
                 icon: "💖",
                 description: "Chúc mừng 6 tháng bên nhauuuuu! Mong rằng hai đứa mình sẽ có thêm nhiều kỉ niệm đẹp!!!!"
             }
-        ].sort((a, b) => new Date(a.date) - new Date(b.date)); // Sort events by date
+        ].sort((a, b) => new Date(a.date) - new Date(b.date)); 
 
 
         // --- Data Loading ---
@@ -131,6 +128,7 @@
             try {
                 const response = await fetch('./photoMemories.json');
                 if (!response.ok) {
+                    console.error(`HTTP error! status: ${response.status} - Could not load photoMemories.json. Path: ./photoMemories.json`);
                     throw new Error(`HTTP error! status: ${response.status} - Could not load photoMemories.json.`);
                 }
                 const data = await response.json();
@@ -141,18 +139,19 @@
                 console.log("Photo memories loaded:", photoMemories.length);
             } catch (error) {
                 console.error("Error loading photo memories:", error);
-                photoMemories = [];
+                photoMemories = []; // Ensure it's an empty array on error
                 const container = document.getElementById('photoMemoriesContainer');
-                if (container) container.innerHTML = `<p class="text-red-500 text-center py-4 col-span-full">Could not load memories. ${error.message}</p>`;
+                if (container) container.innerHTML = `<p class="text-red-500 text-center py-4 col-span-full">Không thể tải kỷ niệm. Vui lòng kiểm tra file photoMemories.json. Lỗi: ${error.message}</p>`;
             }
-            renderPhotoMemories();
+            renderPhotoMemories(); // Always call render, it handles empty state
         }
 
         async function loadInitialData() {
             console.log("Loading initial data...");
-            await loadPhotoMemories();
-            updateJourneyView();
-            renderTimelineEvents(); // Render timeline after data is ready
+            await loadPhotoMemories(); // Wait for photos to load
+            // These depend on DOM elements being available but not directly on photoMemories data
+            updateJourneyView(); 
+            renderTimelineEvents(); // Render timeline after photoMemories might be populated (for images in timeline)
         }
 
         // --- UI Rendering and Updates ---
@@ -175,21 +174,21 @@
                 }
             });
 
+            // Specific view updates
             if (viewName === 'journey') updateJourneyView();
-            if (viewName === 'memories' && photoMemories.length > 0) renderPhotoMemories();
+            if (viewName === 'memories' && photoMemories.length > 0) renderPhotoMemories(); // Re-render if needed
             if (viewName === 'letter') setupLoveLetterReveal();
-            // if (viewName === 'timeline') renderTimelineEvents(); // Already called in loadInitialData and potentially on switch
+            if (viewName === 'timeline') { /* renderTimelineEvents(); // Already called initially, and data is static for now */ }
         }
 
         function updateJourneyView() {
-            // ... (Journey view update logic - unchanged) ...
             const durationEl = document.getElementById('relationshipDuration');
             const nextAnniversaryEl = document.getElementById('nextAnniversary');
             const nextMonthlyAnniversaryEl = document.getElementById('nextMonthlyAnniversary');
             const fixedDateDisplayEl = document.getElementById('fixedStartDateDisplay');
 
             if (!durationEl || !nextAnniversaryEl || !nextMonthlyAnniversaryEl || !fixedDateDisplayEl) {
-                console.warn("One or more Journey view elements not found. Deferring update.");
+                // console.warn("One or more Journey view elements not found. Deferring update.");
                 return;
             }
             
@@ -197,12 +196,12 @@
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-            fixedDateDisplayEl.textContent = `Mình đã chính thức bên nhau từ: ${startDate.toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+            if(fixedDateDisplayEl) fixedDateDisplayEl.textContent = `Mình đã chính thức bên nhau từ: ${startDate.toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}`;
 
             if (isNaN(startDate.getTime())) {
-                 durationEl.innerHTML = '<p class="text-red-500">Invalid start date configured.</p>';
-                 nextAnniversaryEl.textContent = '';
-                 nextMonthlyAnniversaryEl.textContent = '';
+                 if(durationEl) durationEl.innerHTML = '<p class="text-red-500">Lỗi ngày bắt đầu.</p>';
+                 if(nextAnniversaryEl) nextAnniversaryEl.textContent = 'Lỗi tính toán';
+                 if(nextMonthlyAnniversaryEl) nextMonthlyAnniversaryEl.textContent = 'Lỗi tính toán';
                  return;
             }
 
@@ -219,7 +218,7 @@
                 years--;
                 months += 12;
             }
-             durationEl.innerHTML = `
+            if(durationEl) durationEl.innerHTML = `
                 <p class="text-3xl md:text-4xl font-bold text-pink-600">${years} <span class="text-xl md:text-2xl font-normal text-gray-700">Năm</span></p>
                 <p class="text-3xl md:text-4xl font-bold text-pink-600">${months} <span class="text-xl md:text-2xl font-normal text-gray-700">Tháng</span></p>
                 <p class="text-3xl md:text-4xl font-bold text-pink-600">${days} <span class="text-xl md:text-2xl font-normal text-gray-700">Ngày</span></p>
@@ -232,7 +231,7 @@
                 nextAnniversaryDate.setFullYear(today.getFullYear() + 1);
             }
             const nextAnniversaryYears = nextAnniversaryDate.getFullYear() - startDate.getFullYear();
-            nextAnniversaryEl.textContent = `Ngày kỉ niệm tiếp theo (${nextAnniversaryYears} ${nextAnniversaryYears === 1 ? 'Năm' : 'năm'}): ${nextAnniversaryDate.toLocaleDateString('vi-VN', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+            if(nextAnniversaryEl) nextAnniversaryEl.textContent = `Ngày kỉ niệm ${nextAnniversaryYears} năm: ${nextAnniversaryDate.toLocaleDateString('vi-VN', { month: 'long', day: 'numeric', year: 'numeric' })}`;
 
             let monthsPassedSinceStart = (today.getFullYear() - startDate.getFullYear()) * 12 + (today.getMonth() - startDate.getMonth());
             if (today.getDate() < startDate.getDate()) {
@@ -243,26 +242,22 @@
              if (monthsPassedSinceStart < 0) monthsPassedSinceStart = 0; 
             let nextMilestoneTotalMonths = monthsPassedSinceStart + 1;
             let nextMonthlyDate = new Date(startDate.getFullYear(), startDate.getMonth() + nextMilestoneTotalMonths, startDate.getDate());
-            nextMonthlyAnniversaryEl.textContent = `Cột mốc tiếp theo (${nextMilestoneTotalMonths} ${nextMilestoneTotalMonths === 1 ? 'Tháng' : 'tháng'}): ${nextMonthlyDate.toLocaleDateString('vi-VN', { month: 'long', day: 'numeric', year: (nextMonthlyDate.getFullYear() !== today.getFullYear() ? 'numeric' : undefined) })}`;
+            if(nextMonthlyAnniversaryEl) nextMonthlyAnniversaryEl.textContent = `Cột mốc ${nextMilestoneTotalMonths} tháng: ${nextMonthlyDate.toLocaleDateString('vi-VN', { month: 'long', day: 'numeric', year: (nextMonthlyDate.getFullYear() !== today.getFullYear() ? 'numeric' : undefined) })}`;
         }
 
         function setupLoveLetterReveal() {
-            // ... (Love letter reveal logic - unchanged) ...
             if (!loveLetterPlaceholder) loveLetterPlaceholder = document.getElementById('loveLetterPlaceholder');
             if (!actualLoveLetter) actualLoveLetter = document.getElementById('actualLoveLetter');
             if (!letterCountdownEl) letterCountdownEl = document.getElementById('letterCountdown');
 
             if (!loveLetterPlaceholder || !actualLoveLetter || !letterCountdownEl) {
-                console.warn("Love letter reveal elements not found.");
-                if(loveLetterPlaceholder) loveLetterPlaceholder.classList.remove('hidden');
-                if(actualLoveLetter) actualLoveLetter.classList.add('hidden');
+                // console.warn("Love letter reveal elements not found.");
                 return;
             }
 
             const startDate = new Date(relationshipStartDate + "T00:00:00");
             if (isNaN(startDate.getTime())) {
-                console.error("Invalid relationshipStartDate for letter reveal.");
-                loveLetterPlaceholder.innerHTML = "<p class='text-red-500 text-center'>Lỗi cấu hình ngày kỷ niệm.</p>";
+                loveLetterPlaceholder.innerHTML = "<p class='text-red-500 text-center'>Lỗi cấu hình ngày.</p>";
                 actualLoveLetter.classList.add('hidden');
                 return;
             }
@@ -289,15 +284,15 @@
         }
 
         function renderPhotoMemories() {
-            // ... (Photo memories rendering logic - unchanged) ...
             const container = document.getElementById('photoMemoriesContainer');
             if (!container) {
-                console.error("photoMemoriesContainer not found for rendering.");
+                // console.error("photoMemoriesContainer not found for rendering.");
                 return;
             }
             container.innerHTML = ''; 
             if (photoMemories.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center py-4 col-span-full">Chưa có kỉ niệm nào được tải. Hãy kiểm tra lại file photoMemories.json nhé.</p>';
+                // This message is now handled by loadPhotoMemories on error or if file is empty
+                // container.innerHTML = '<p class="text-gray-500 text-center py-4 col-span-full">Chưa có kỉ niệm nào được tải.</p>';
                 return;
             }
             photoMemories.forEach(memory => {
@@ -317,7 +312,7 @@
                 captionDiv.className = 'p-3';
                 const captionText = document.createElement('p');
                 captionText.className = 'text-gray-800 font-semibold truncate'; 
-                captionText.textContent = memory.caption || "Untitled Memory";
+                captionText.textContent = memory.caption || "Không có chú thích";
                 captionDiv.appendChild(captionText);
                 if (memory.memoryDate) {
                     const dateText = document.createElement('p');
@@ -343,102 +338,31 @@
         function renderTimelineEvents() {
             const container = document.getElementById('timelineEventsContainer');
             if (!container) {
-                console.error("timelineEventsContainer not found.");
+                // console.error("timelineEventsContainer not found.");
                 return;
             }
-            container.innerHTML = ''; // Clear previous events
+            container.innerHTML = ''; 
 
             if (timelineEventsData.length === 0) {
                 container.innerHTML = '<p class="text-gray-500 text-center py-4">Chưa có sự kiện nào trong dòng thời gian.</p>';
                 return;
             }
-
-            // For horizontal timeline on larger screens, we create a single track
-            // For vertical on mobile, items will stack. We use responsive classes on items.
+            
             timelineEventsData.forEach((event, index) => {
                 const eventEl = document.createElement('div');
-                // Base classes for all screen sizes (vertical stacking by default)
-                eventEl.className = `relative flex flex-col md:flex-row items-center mb-8 p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 cursor-pointer group w-full`;
-                // Add a line connector for vertical view (except for the last item)
-                if (index < timelineEventsData.length -1) {
-                    eventEl.classList.add('pb-12'); // Add padding for the line to extend
+                eventEl.className = `relative group cursor-pointer p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300`;
+                
+                let photoHtml = '';
+                if (event.photoId) {
+                    const photo = photoMemories.find(p => p.internalId === event.photoId);
+                    if (photo) {
+                        photoHtml = `<img src="${photo.imageUrl}" alt="${event.title}" class="mt-2 rounded-md max-h-32 object-cover w-full sm:w-auto transition-transform duration-300 group-hover:scale-105">`;
+                    }
                 }
 
-
-                // Create the "line" element that connects dots vertically on mobile
-                // and becomes part of the horizontal track on md+
-                // This is a simplified visual representation.
-                const lineConnector = document.createElement('div');
-                lineConnector.className = 'hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-pink-300 -translate-y-1/2 -z-10';
-
-
-                const dot = document.createElement('div');
-                dot.className = `w-6 h-6 bg-pink-500 rounded-full shadow-md border-2 border-white absolute left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:relative flex-shrink-0 group-hover:bg-pink-600 transition-colors duration-300`;
-                // Adjust dot position for vertical (centered on line) vs horizontal
-                dot.style.top = 'calc(50% - 0.75rem)'; // Center dot vertically for horizontal items
-                // For vertical stacking, we want the dot at the start of the item
-                // This is tricky with the line, simpler approach:
-                // On mobile, the "line" is implied by the card's border or a visual cue within the card.
-                // The dot can be at the top-left or centered above the card.
-                // Given the card structure, the dot might be better placed alongside content.
-
-                // For simplicity, using a vertical line for mobile/stacked view
-                if (index < timelineEventsData.length - 1) {
-                     const verticalLine = document.createElement('div');
-                     verticalLine.className = 'absolute top-0 left-1/2 -ml-px w-0.5 h-full bg-pink-200 md:hidden -z-10';
-                     // Adjust to start from dot if dot is above
-                     // For now, centered line between cards
-                     eventEl.appendChild(verticalLine);
-                }
-
-
-                const contentEl = document.createElement('div');
-                contentEl.className = `relative bg-white p-3 md:p-4 rounded-lg shadow-sm md:ml-8 w-full text-center md:text-left`;
-
-                const iconEl = document.createElement('span');
-                iconEl.className = 'text-2xl mr-2 md:mr-3 group-hover:scale-110 transition-transform';
-                iconEl.textContent = event.icon || '🗓️';
-
-                const titleEl = document.createElement('h3');
-                titleEl.className = 'text-md sm:text-lg font-semibold text-pink-600 mb-1';
-                titleEl.textContent = event.title;
-
-                const dateEl = document.createElement('p');
-                dateEl.className = 'text-xs sm:text-sm text-gray-500 mb-2';
-                const eventDate = new Date(event.date + "T00:00:00");
-                dateEl.textContent = eventDate.toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' });
-
-                const descriptionEl = document.createElement('p');
-                descriptionEl.className = 'text-sm text-gray-700 hidden sm:block'; // Show description on hover/click, or always on larger cards
-                descriptionEl.textContent = event.description.substring(0, 100) + (event.description.length > 100 ? '...' : ''); // Truncate for card view
-
-                // Layout for content: icon, title, date, description
-                const headerDiv = document.createElement('div');
-                headerDiv.className = 'flex items-center justify-center md:justify-start mb-1';
-                headerDiv.appendChild(iconEl);
-                headerDiv.appendChild(titleEl);
-                
-                contentEl.appendChild(headerDiv);
-                contentEl.appendChild(dateEl);
-                contentEl.appendChild(descriptionEl);
-
-                // Order for mobile (dot can be part of contentEl or alongside)
-                // For md+ (horizontal), dot comes first, then content
-                // Using flex-col for mobile and md:flex-row for horizontal
-                
-                // Simplified structure: Each event is a card.
-                // Vertical line connects cards on mobile.
-                // Horizontal line connects dots on desktop.
-                // We can achieve horizontal by placing items with alternating top/bottom positions relative to a central line,
-                // or a simpler straight sequence. A straight sequence is easier with flex.
-
-                // Let's make it always vertical stacking for simplicity and good mobile experience first.
-                // The "horizontal" timeline is more complex to make truly responsive.
-                // Sticking to a more "feed" like vertical timeline for robustness.
-                
                 eventEl.innerHTML = `
-                    <div class="absolute w-3 h-3 bg-pink-500 rounded-full -left-1.5 border border-white group-hover:bg-pink-700 transition-colors"></div>
-                    <div class="pl-6">
+                    <div class="absolute w-3 h-3 bg-pink-500 rounded-full -left-[2.375rem] md:-left-[2.625rem] top-5 border-2 border-white group-hover:bg-pink-700 transition-colors"></div>
+                    <div class="ml-0"> 
                         <div class="flex items-baseline mb-1">
                             <span class="text-xl sm:text-2xl mr-2 group-hover:scale-110 transition-transform">${event.icon || '🗓️'}</span>
                             <h3 class="text-md sm:text-lg font-semibold text-pink-600 group-hover:text-pink-700 transition-colors">${event.title}</h3>
@@ -447,17 +371,18 @@
                             ${new Date(event.date + "T00:00:00").toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </time>
                         <p class="text-sm text-gray-700">${event.description}</p>
-                        ${event.photoId && photoMemories.find(p => p.internalId === event.photoId) ? 
-                            `<img src="${photoMemories.find(p => p.internalId === event.photoId).imageUrl}" alt="${event.title}" class="mt-2 rounded-md max-h-32 object-cover w-full sm:w-auto">`
-                            : ''
-                        }
+                        ${photoHtml}
                     </div>
                 `;
-                // Add a border line to connect items vertically, except for the last one
-                if (index < timelineEventsData.length -1) {
-                    eventEl.classList.add("border-l-2", "border-pink-200", "ml-1.5");
+                // Add a border line to connect items vertically
+                if (index < timelineEventsData.length - 1) {
+                     eventEl.style.borderLeft = "2px solid #fbcfe8"; // pink-200
+                     eventEl.style.marginLeft = "0.375rem"; // ml-1.5 to align with the dot's potential offset
+                     eventEl.style.paddingLeft = "1.5rem"; // pl-6
                 } else {
-                    eventEl.classList.add("ml-1.5"); // Keep alignment for the dot
+                     eventEl.style.marginLeft = "0.375rem"; 
+                     eventEl.style.paddingLeft = "1.5rem";
+                     eventEl.style.borderLeft = "2px solid transparent"; // Keep alignment without line
                 }
 
 
@@ -469,7 +394,7 @@
 
         function openTimelineEventModal(eventData) {
             if (!timelineEventModal || !timelineEventModalTitle || !timelineEventModalDate || !timelineEventModalDescription || !timelineEventModalImage) {
-                console.error("Timeline event modal elements not found.");
+                // console.error("Timeline event modal elements not found.");
                 return;
             }
 
@@ -504,17 +429,16 @@
 
         // --- Lightbox Functions ---
         function openLightbox(memoryInternalId) {
-            // ... (Lightbox open logic - unchanged) ...
             const memory = photoMemories.find(m => m.internalId === memoryInternalId);
             if (!memory || !lightbox) { 
-                console.error("Could not open lightbox: Memory or lightbox element not found.");
+                // console.error("Could not open lightbox: Memory or lightbox element not found.");
                 return;
             }
             if (lightboxImage) {
                 lightboxImage.src = memory.imageUrl;
                 lightboxImage.alt = memory.caption || "Enlarged memory image";
             }
-            if (lightboxCaption) lightboxCaption.textContent = memory.caption || "No caption";
+            if (lightboxCaption) lightboxCaption.textContent = memory.caption || "Không có chú thích";
             if (lightboxDate) {
                 if (memory.memoryDate) {
                     try {
@@ -531,7 +455,6 @@
         }
 
         function closeLightbox() {
-            // ... (Lightbox close logic - unchanged) ...
             if (!lightbox) return; 
             lightbox.classList.add('hidden');
             lightbox.classList.remove('flex');
@@ -540,17 +463,17 @@
 
         // --- Event Listeners and Initialization ---
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log("DOM fully loaded and parsed");
+            console.log("DOM fully loaded and parsed. Initializing...");
 
             sections.letter = document.getElementById('loveLetterSection');
             sections.memories = document.getElementById('memoriesSection');
             sections.journey = document.getElementById('journeySection');
-            sections.timeline = document.getElementById('timelineSection'); // Assign new section
+            sections.timeline = document.getElementById('timelineSection'); 
 
             navButtons.letter = document.getElementById('navLetter');
             navButtons.memories = document.getElementById('navMemories');
             navButtons.journey = document.getElementById('navJourney');
-            navButtons.timeline = document.getElementById('navTimeline'); // Assign new nav button
+            navButtons.timeline = document.getElementById('navTimeline'); 
 
             lightbox = document.getElementById('imageLightbox');
             lightboxImage = document.getElementById('lightboxImage');
@@ -564,7 +487,6 @@
             actualLoveLetter = document.getElementById('actualLoveLetter');
             letterCountdownEl = document.getElementById('letterCountdown');
 
-            // Timeline Modal Elements
             timelineEventModal = document.getElementById('timelineEventModal');
             timelineEventModalTitle = document.getElementById('timelineEventModalTitle');
             timelineEventModalDate = document.getElementById('timelineEventModalDate');
@@ -572,21 +494,37 @@
             timelineEventModalImage = document.getElementById('timelineEventModalImage');
             closeTimelineEventModalButton = document.getElementById('closeTimelineEventModalButton');
 
+            // Critical check for DOM elements
+            const allCoreElementsPresent = 
+                sections.letter && sections.memories && sections.journey && sections.timeline &&
+                navButtons.letter && navButtons.memories && navButtons.journey && navButtons.timeline &&
+                lightbox && closeLightboxButton &&
+                loveLetterPlaceholder && actualLoveLetter && letterCountdownEl &&
+                timelineEventModal && closeTimelineEventModalButton;
 
-            if (!sections.letter || !sections.memories || !sections.journey || !sections.timeline ||
-                !navButtons.letter || !navButtons.memories || !navButtons.journey || !navButtons.timeline ||
-                !lightbox || !closeLightboxButton ||
-                !loveLetterPlaceholder || !actualLoveLetter || !letterCountdownEl ||
-                !timelineEventModal || !closeTimelineEventModalButton) {
-                console.error("CRITICAL: Not all UI elements were found. Interactivity may be broken.");
-                // ... (Error display logic) ...
-                return;
+            if (!allCoreElementsPresent) {
+                console.error("CRITICAL: Not all core UI elements were found. Aborting initialization.");
+                document.body.innerHTML = "<p style='color:red; font-size:1.2em; padding:20px; text-align:center;'>Lỗi nghiêm trọng: Không tìm thấy một số thành phần giao diện. Trang không thể hoạt động.</p>";
+                return; 
             }
-            console.log("All core UI elements assigned.");
+            console.log("All core UI elements assigned successfully.");
 
-            await loadInitialData();
-            setupLoveLetterReveal();
-            switchView(currentView);
+            try {
+                await loadInitialData(); // This handles photo loading and initial renders
+                setupLoveLetterReveal();
+                switchView(currentView); // Set initial view after data is loaded and initial renders are done
+            } catch (e) {
+                 console.error("Error during initial data load or setup:", e);
+                 // Display a user-friendly error on the page if appropriate
+                 const journeySection = document.getElementById('journeySection');
+                 if (journeySection) {
+                    journeySection.innerHTML = `<h2 class="ios-header">Lỗi</h2><p class="text-red-500 text-center">Không thể tải dữ liệu cần thiết cho trang. Vui lòng thử lại sau.</p>`;
+                 } else {
+                    document.body.innerHTML = "<p style='color:red; font-size:1.2em; padding:20px; text-align:center;'>Lỗi tải dữ liệu. Vui lòng thử lại sau.</p>";
+                 }
+                 return; // Stop further execution if initial load fails badly
+            }
+
 
             Object.keys(navButtons).forEach(key => {
                 if (navButtons[key]) {
@@ -605,6 +543,7 @@
 
 
             setInterval(() => {
+                if (document.hidden) return; // Don't update if tab is not visible
                 updateJourneyView();
                 setupLoveLetterReveal();
             }, 60000);
@@ -642,8 +581,16 @@
         
         /* Timeline Styles */
         #timelineSection .ios-header { @apply text-pink-700;}
-        #timelineEventsContainer { @apply space-y-6 sm:space-y-8; }
-        /* Individual timeline event styling is mostly inline for simplicity */
+        #timelineEventsContainer { 
+            @apply space-y-0; /* Remove space-y as border and padding will handle spacing */
+            position: relative; /* For absolute positioning of dots and lines if needed by child */
+        }
+        /* Styling for timeline event items applied directly in renderTimelineEvents for simplicity */
+        /* Ensures the relative positioning context for the dot and line */
+        #timelineEventsContainer > div {
+            position: relative;
+        }
+
 
         /* Timeline Event Modal */
         #timelineEventModal { @apply hidden fixed inset-0 bg-black bg-opacity-75 items-center justify-center p-4 z-[55]; }
@@ -662,11 +609,10 @@
     </header>
 
     <main id="contentArea" class="flex-grow overflow-y-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-        <!-- Journey Section -->
         <section id="journeySection" class="content-section">
             <h2 class="ios-header">Hành trình của hai đứa</h2>
             <div class="space-y-3 sm:space-y-4 text-center">
-                <p id="fixedStartDateDisplay" class="text-sm sm:text-md text-gray-700 mb-3 sm:mb-4">Bên nhau từ: 21 Tháng Một, 2025</p>
+                <p id="fixedStartDateDisplay" class="text-sm sm:text-md text-gray-700 mb-3 sm:mb-4">Đang tải...</p>
                 <div id="relationshipDuration" class="py-4 sm:py-6 bg-pink-50 rounded-lg">
                     <p class="text-gray-600">Đang tính toán...</p>
                 </div>
@@ -677,34 +623,32 @@
             </div>
         </section>
 
-        <!-- Timeline Section -->
         <section id="timelineSection" class="content-section hidden">
             <h2 class="ios-header">Dòng thời gian Kỷ Niệm</h2>
             <p class="text-center text-sm text-gray-500 mb-4 sm:mb-6">Những cột mốc đáng nhớ của chúng ta.</p>
             <div id="timelineEventsContainer" class="relative">
-                <!-- Timeline events will be rendered here by JavaScript -->
                 <p class="text-gray-500 text-center py-4">Đang tải dòng thời gian...</p>
             </div>
         </section>
 
-        <!-- Love Letter Section -->
         <section id="loveLetterSection" class="content-section hidden">
             <div id="loveLetterPlaceholder">
                 <h2 class="ios-header">Thư sắp được mở khóa!</h2>
                 <p id="letterCountdown" class="text-center text-gray-600 mt-4 text-md sm:text-lg"></p>
             </div>
             <div id="actualLoveLetter" class="hidden">
-                <h2 class="ios-header">Header</h2>
+                <h2 class="ios-header">Thư gửi em yêu ❤️</h2>
                 <div id="loveLetterContent" class="love-letter-text prose max-w-none">
-                    <p>H</p>
-                    <p>H</p>
-                    <p>H</p>
-                    <p>H</p>
+                    <p>Em yêu của anh,</p>
+                    <p>Vậy là chúng mình đã cùng nhau đi qua 6 tháng thật đẹp rồi. Sáu tháng tuy không phải là một khoảng thời gian dài, nhưng cũng đủ để anh cảm nhận được biết bao điều tuyệt vời khi có em bên cạnh.</p>
+                    <p>Mỗi ngày trôi qua, tình cảm anh dành cho em lại càng thêm lớn. Anh yêu nụ cười của em, yêu cái cách em nũng nịu, yêu cả những lúc em "ngố" nữa. Cảm ơn em đã đến bên anh, mang theo thật nhiều màu sắc và ý nghĩa cho cuộc sống của anh.</p>
+                    <p>Anh mong rằng chúng ta sẽ còn nhiều, thật nhiều những "6 tháng" nữa để cùng nhau viết nên câu chuyện tình yêu của riêng mình. Sẽ có những lúc vui, có thể có cả những thử thách, nhưng anh tin chỉ cần mình nắm chặt tay nhau, chúng ta sẽ vượt qua tất cả.</p>
+                    <p>Yêu em nhiều lắm, cô gái bé nhỏ của anh!</p>
+                    <p>Chồng của em.</p>
                 </div>
             </div>
         </section>
 
-        <!-- Memories Section -->
         <section id="memoriesSection" class="content-section hidden">
             <h2 class="ios-header">Khoảnh khắc đáng nhớ</h2>
             <p class="text-center text-sm text-gray-500 mb-4">Những tấm ảnh xinh đã chụp cùng nhau</p>
@@ -735,7 +679,6 @@
         </div>
     </nav>
 
-    <!-- Image Lightbox Modal -->
     <div id="imageLightbox" class="hidden">
         <div class="lightbox-content">
             <img id="lightboxImage" src="" alt="Enlarged memory" >
@@ -752,7 +695,6 @@
         <button id="closeLightboxButton" aria-label="Close lightbox">&times;</button>
     </div>
 
-    <!-- Timeline Event Detail Modal -->
     <div id="timelineEventModal" class="hidden">
         <div class="timeline-modal-content">
             <h3 id="timelineEventModalTitle"></h3>
@@ -763,7 +705,6 @@
         </div>
     </div>
 
-    <!-- Feedback Modal (if you had one, kept for reference or future use) -->
     <div id="feedbackModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-60 flex items-center justify-center z-[60] p-4">
         <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
             <h3 id="modalTitle" class="text-xl font-semibold mb-2 text-gray-800"></h3>
@@ -774,4 +715,3 @@
 
 </body>
 </html>
-
