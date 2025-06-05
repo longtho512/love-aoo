@@ -29,6 +29,11 @@
         let lightboxStory = null;
         let closeLightboxButton = null;
 
+        // Love Letter DOM elements (defined here for broader scope if needed)
+        let loveLetterPlaceholder = null;
+        let actualLoveLetter = null;
+        let letterCountdownEl = null;
+
 
         // --- App State ---
         let currentView = 'journey'; // Default view
@@ -40,15 +45,6 @@
             try {
                 // IMPORTANT: Ensure your 'photoMemories.json' file is in the root of your project
                 // and includes "location" and "story" fields for each memory.
-                // Example structure for an entry in photoMemories.json:
-                // {
-                //   "id": "p1", 
-                //   "imageUrl": "https://...", 
-                //   "caption": "Our First Date!", 
-                //   "memoryDate": "2025-02-14",
-                //   "location": "Sunset Point Beach",
-                //   "story": "We sat for hours just watching the colors change..."
-                // }
                 const response = await fetch('./photoMemories.json'); 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status} - Could not load photoMemories.json. Make sure the file exists at the root and the path is correct.`);
@@ -73,6 +69,7 @@
             console.log("Loading initial data...");
             await loadPhotoMemories(); // Load photo memories from JSON
             updateJourneyView(); // Update journey view with the fixed date
+            // setupLoveLetterReveal will be called after DOM elements are assigned
         }
 
         // --- UI Rendering and Updates ---
@@ -96,10 +93,12 @@
             });
             
             if (viewName === 'journey') updateJourneyView();
-            // No need to call renderPhotoMemories here if it's already called by loadPhotoMemories
-            // and when switching to the 'memories' view specifically.
             if (viewName === 'memories' && photoMemories.length > 0) {
                  renderPhotoMemories(); // Ensure it re-renders if already loaded and switching back
+            }
+            // If switching to letter view, ensure the reveal logic has run (it runs periodically anyway)
+            if (viewName === 'letter') {
+                setupLoveLetterReveal();
             }
         }
 
@@ -164,18 +163,74 @@
             let monthsPassedSinceStart = (today.getFullYear() - startDate.getFullYear()) * 12 + (today.getMonth() - startDate.getMonth());
             
             if (today.getDate() < startDate.getDate()) {
-                // If today's day is before the start day, and it's not the very first month before the start day itself
                 if (!(today.getFullYear() === startDate.getFullYear() && today.getMonth() === startDate.getMonth() && today.getDate() < startDate.getDate())) {
-                     monthsPassedSinceStart--; // We haven't completed this month's milestone yet
+                     monthsPassedSinceStart--; 
                 }
             }
-             if (monthsPassedSinceStart < 0) monthsPassedSinceStart = 0; // Handles case where today is before start date
+             if (monthsPassedSinceStart < 0) monthsPassedSinceStart = 0; 
 
             let nextMilestoneTotalMonths = monthsPassedSinceStart + 1;
             
             let nextMonthlyDate = new Date(startDate.getFullYear(), startDate.getMonth() + nextMilestoneTotalMonths, startDate.getDate());
             
             nextMonthlyAnniversaryEl.textContent = `Cột mốc tiếp theo (${nextMilestoneTotalMonths} ${nextMilestoneTotalMonths === 1 ? 'Tháng' : 'tháng'}): ${nextMonthlyDate.toLocaleDateString('vi-VN', { month: 'long', day: 'numeric', year: (nextMonthlyDate.getFullYear() !== today.getFullYear() ? 'numeric' : undefined) })}`;
+        }
+
+        // --- Love Letter Reveal Function ---
+        function setupLoveLetterReveal() {
+            // Ensure DOM elements are assigned if not already
+            if (!loveLetterPlaceholder) loveLetterPlaceholder = document.getElementById('loveLetterPlaceholder');
+            if (!actualLoveLetter) actualLoveLetter = document.getElementById('actualLoveLetter');
+            if (!letterCountdownEl) letterCountdownEl = document.getElementById('letterCountdown');
+
+            if (!loveLetterPlaceholder || !actualLoveLetter || !letterCountdownEl) {
+                console.warn("Love letter reveal elements not found. Reveal feature might not work.");
+                if(loveLetterPlaceholder) loveLetterPlaceholder.classList.remove('hidden'); // Default to showing placeholder
+                if(actualLoveLetter) actualLoveLetter.classList.add('hidden');
+                return;
+            }
+
+            const startDate = new Date(relationshipStartDate + "T00:00:00");
+            if (isNaN(startDate.getTime())) {
+                console.error("Invalid relationshipStartDate for letter reveal.");
+                loveLetterPlaceholder.innerHTML = "<p class='text-red-500 text-center'>Lỗi cấu hình ngày kỷ niệm.</p>";
+                actualLoveLetter.classList.add('hidden');
+                return;
+            }
+
+            const sixMonthAnniversary = new Date(startDate);
+            sixMonthAnniversary.setMonth(startDate.getMonth() + 6);
+
+            const now = new Date();
+            // For testing reveal date:
+            // const now = new Date("2025-07-21T00:00:00"); // Test: Anniversary day
+            // const now = new Date("2025-07-20T23:59:50"); // Test: Just before anniversary
+            // const now = new Date("2025-06-05T12:00:00"); // Test: Current date (before anniversary)
+
+
+            if (now >= sixMonthAnniversary) {
+                loveLetterPlaceholder.classList.add('hidden');
+                actualLoveLetter.classList.remove('hidden');
+                console.log("6-month anniversary reached! Revealing love letter.");
+            } else {
+                loveLetterPlaceholder.classList.remove('hidden');
+                actualLoveLetter.classList.add('hidden');
+                
+                const timeDiff = sixMonthAnniversary.getTime() - now.getTime();
+                // Calculate total days left, rounding up to the nearest whole day
+                const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+                
+                if (daysLeft > 1) {
+                    letterCountdownEl.textContent = `Còn tận ${daysLeft} ngày nữa em mới đọc được cơ lêu lêu! 🥰`;
+                } else if (daysLeft === 1) {
+                    letterCountdownEl.textContent = `Ngày mai mới đọc được cơ vợ hồi hộp khum =))`;
+                } else if (daysLeft <= 0) { // Should be caught by now >= sixMonthAnniversary, but as a fallback
+                     letterCountdownEl.textContent = `Hôm nay đọc được òi vợ nhớ check nhé kikiki!💖`;
+                } else { // Handles any other edge cases if daysLeft calculation is odd
+                     letterCountdownEl.textContent = `Sắp đến ngày rồi! Chờ nhé! 😉`;
+                }
+                console.log(`Days until 6-month anniversary (calculated): ${daysLeft}`);
+            }
         }
 
 
@@ -193,15 +248,12 @@
 
             photoMemories.forEach(memory => {
                 const memoryEl = document.createElement('div');
-                // Added 'group' for potential hover effects on children, and 'cursor-pointer'
                 memoryEl.className = 'bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden mb-4 relative group cursor-pointer';
-                // Add click listener to open the lightbox, using the memory's unique internalId
                 memoryEl.addEventListener('click', () => openLightbox(memory.internalId));
                 
                 const img = document.createElement('img');
                 img.src = memory.imageUrl;
-                img.alt = memory.caption || "Memory image"; // Provide a fallback alt
-                // Added transition for a subtle hover effect (optional)
+                img.alt = memory.caption || "Memory image"; 
                 img.className = 'w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105';
                 img.onerror = () => { 
                     img.src = `https://placehold.co/600x400/f8bbd0/4a4a4a?text=Image+Not+Found`; 
@@ -213,7 +265,7 @@
                 captionDiv.className = 'p-3';
                 
                 const captionText = document.createElement('p');
-                captionText.className = 'text-gray-800 font-semibold truncate'; // Truncate caption if too long for the card
+                captionText.className = 'text-gray-800 font-semibold truncate'; 
                 captionText.textContent = memory.caption || "Untitled Memory";
                 captionDiv.appendChild(captionText);
                 
@@ -221,15 +273,14 @@
                     const dateText = document.createElement('p');
                     dateText.className = 'text-sm text-gray-500';
                     try {
-                        // Ensure date is parsed as local by appending T00:00:00 if it's just yyyy-mm-dd
                         const dateObj = new Date(memory.memoryDate.includes('T') ? memory.memoryDate : memory.memoryDate + "T00:00:00");
                         if (!isNaN(dateObj.getTime())) {
                              dateText.textContent = dateObj.toLocaleDateString('vi-VN', { month: 'short', day: 'numeric', year: 'numeric' });
                         } else {
-                            dateText.textContent = memory.memoryDate; // Fallback to raw string if parsing fails
+                             dateText.textContent = memory.memoryDate; 
                         }
                     } catch (e) {
-                        dateText.textContent = memory.memoryDate; // Fallback on any error
+                         dateText.textContent = memory.memoryDate; 
                     }
                     captionDiv.appendChild(dateText);
                 }
@@ -240,14 +291,12 @@
 
         // --- Lightbox Functions ---
         function openLightbox(memoryInternalId) {
-            // Find the memory from the photoMemories array using its unique internalId
             const memory = photoMemories.find(m => m.internalId === memoryInternalId);
-            if (!memory || !lightbox) { // Ensure memory and lightbox element exist
+            if (!memory || !lightbox) { 
                 console.error("Could not open lightbox: Memory or lightbox element not found.");
                 return;
             }
 
-            // Populate lightbox elements if they exist
             if (lightboxImage) {
                 lightboxImage.src = memory.imageUrl;
                 lightboxImage.alt = memory.caption || "Enlarged memory image";
@@ -259,11 +308,10 @@
             if (lightboxDate) {
                 if (memory.memoryDate) {
                     try {
-                        // Ensure date is parsed as local by appending T00:00:00 if it's just yyyy-mm-dd
                         const dateObj = new Date(memory.memoryDate.includes('T') ? memory.memoryDate : memory.memoryDate + "T00:00:00");
                         lightboxDate.textContent = !isNaN(dateObj.getTime()) ? `Date: ${dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : `Date: ${memory.memoryDate}`;
                     } catch (e) {
-                        lightboxDate.textContent = `Date: ${memory.memoryDate}`; // Fallback to raw date string
+                        lightboxDate.textContent = `Date: ${memory.memoryDate}`;
                     }
                 } else {
                     lightboxDate.textContent = "Date: Not specified";
@@ -277,17 +325,16 @@
                 lightboxStory.textContent = memory.story || "No story shared for this memory.";
             }
             
-            // Show the lightbox
             lightbox.classList.remove('hidden');
-            lightbox.classList.add('flex'); // Use 'flex' for centering
-            document.body.style.overflow = 'hidden'; // Prevent background page from scrolling
+            lightbox.classList.add('flex'); 
+            document.body.style.overflow = 'hidden'; 
         }
 
         function closeLightbox() {
-            if (!lightbox) return; // Ensure lightbox element exists
+            if (!lightbox) return; 
             lightbox.classList.add('hidden');
             lightbox.classList.remove('flex');
-            document.body.style.overflow = 'auto'; // Restore background page scrolling
+            document.body.style.overflow = 'auto';
         }
         
         // --- Event Listeners and Initialization ---
@@ -312,32 +359,38 @@
             lightboxStory = document.getElementById('lightboxStory');
             closeLightboxButton = document.getElementById('closeLightboxButton');
 
+            // Assign Love Letter specific elements (already potentially assigned in setupLoveLetterReveal, but good to ensure here too)
+            loveLetterPlaceholder = document.getElementById('loveLetterPlaceholder');
+            actualLoveLetter = document.getElementById('actualLoveLetter');
+            letterCountdownEl = document.getElementById('letterCountdown');
 
-            // Check if all crucial elements were found
+
             if (!sections.letter || !sections.memories || !sections.journey ||
                 !navButtons.letter || !navButtons.memories || !navButtons.journey ||
-                !lightbox || !closeLightboxButton ) { 
-                console.error("CRITICAL: Not all section, navigation, or lightbox elements were found. Interactivity will be broken.");
-                // Optionally display an error message in the UI
+                !lightbox || !closeLightboxButton || 
+                !loveLetterPlaceholder || !actualLoveLetter || !letterCountdownEl) { 
+                console.error("CRITICAL: Not all section, navigation, lightbox, or letter reveal elements were found. Interactivity will be broken.");
                 const body = document.querySelector('body');
                 if (body) {
                     const errorDiv = document.createElement('div');
                     errorDiv.innerHTML = "<p style='background-color:red; color:white; padding:10px; text-align:center; position:fixed; top:0; left:0; width:100%; z-index:9999;'>Error: Core UI elements missing. App may not function correctly.</p>";
                     body.prepend(errorDiv);
                 }
-                return; // Stop further JS execution if core UI is missing
+                return; 
             }
             console.log("All core UI and lightbox elements assigned.");
 
-            await loadInitialData(); // Load data (photos from JSON, journey updates)
+            await loadInitialData(); 
             
+            setupLoveLetterReveal(); // Initial check for letter reveal
+
             switchView(currentView); // Set initial view
 
             // Setup navigation click handlers
             Object.keys(navButtons).forEach(key => {
                 if (navButtons[key]) {
                     navButtons[key].addEventListener('click', (event) => {
-                        event.preventDefault(); // Good practice for button clicks in nav
+                        event.preventDefault(); 
                         console.log(`Nav button clicked: ${key}`);
                         switchView(key);
                     });
@@ -351,10 +404,9 @@
                 console.warn("Close lightbox button not found.");
             }
             
-            // Optional: Close lightbox when clicking on the backdrop (the lightbox div itself)
             if (lightbox) {
                 lightbox.addEventListener('click', (event) => {
-                    if (event.target === lightbox) { // Only if the backdrop itself is clicked, not its children
+                    if (event.target === lightbox) { 
                         closeLightbox();
                     }
                 });
@@ -362,8 +414,11 @@
                 console.warn("Lightbox element not found for backdrop click listener.");
             }
 
-            // Periodically update journey view for time passing
-            setInterval(updateJourneyView, 60000); 
+            // Periodically update journey view and love letter reveal
+            setInterval(() => {
+                updateJourneyView();
+                setupLoveLetterReveal(); // Periodically check for letter reveal
+            }, 60000); // 60000 ms = 1 minute 
             console.log("Event listeners and periodic updates set up.");
         });
 
@@ -378,41 +433,33 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        button:active, .group:active { transform: scale(0.98); } /* Active state for buttons and group elements */
-        .love-letter-text p { @apply mb-4 leading-relaxed text-gray-700; } /* Style for paragraphs in love letter */
+        button:active, .group:active { transform: scale(0.98); } 
+        .love-letter-text p { @apply mb-4 leading-relaxed text-gray-700; }
 
         /* Lightbox Styles */
         #imageLightbox {
-            @apply hidden fixed inset-0 bg-black bg-opacity-80 items-center justify-center p-4 z-50 transition-opacity duration-300; /* Increased bg opacity */
+            @apply hidden fixed inset-0 bg-black bg-opacity-80 items-center justify-center p-4 z-50 transition-opacity duration-300; 
         }
-        /* :not(.hidden) is not standard for triggering transition on add/remove class. Opacity transition is handled by adding/removing hidden. */
-        /* #imageLightbox.hidden {
-            @apply opacity-0 pointer-events-none; 
-        }
-        #imageLightbox:not(.hidden) {
-            @apply opacity-100 flex; 
-        } */
         .lightbox-content {
             @apply bg-white rounded-lg shadow-xl p-4 md:p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto flex flex-col md:flex-row gap-4 md:gap-6;
         }
         .lightbox-image-container {
-            @apply md:w-1/2 flex-shrink-0 flex items-center justify-center; /* Center image in its container */
+            @apply md:w-1/2 flex-shrink-0 flex items-center justify-center;
         }
         #lightboxImage {
-            @apply w-full h-auto max-h-[70vh] md:max-h-[calc(80vh-4rem)] object-contain rounded-md; /* Adjusted max-h for better fit */
+            @apply w-full h-auto max-h-[70vh] md:max-h-[calc(80vh-4rem)] object-contain rounded-md;
         }
         .lightbox-details {
-            @apply md:w-1/2 flex flex-col py-2; /* Added padding */
+            @apply md:w-1/2 flex flex-col py-2; 
         }
         #lightboxCaption {
-            @apply text-xl md:text-2xl font-semibold text-pink-600 mb-2 break-words; /* Allow caption to wrap */
+            @apply text-xl md:text-2xl font-semibold text-pink-600 mb-2 break-words; 
         }
         #lightboxDate, #lightboxLocation {
             @apply text-sm text-gray-600 mb-1;
         }
         #lightboxStory {
-            @apply text-base text-gray-700 mt-3 leading-relaxed flex-grow overflow-y-auto pr-2; /* Allow story to scroll if long */
-            /* Custom scrollbar for story if needed */
+            @apply text-base text-gray-700 mt-3 leading-relaxed flex-grow overflow-y-auto pr-2; 
             scrollbar-width: thin;
             scrollbar-color: #f472b6 #fce7f3; /* pink-500 and pink-100 */
         }
@@ -429,12 +476,12 @@
 
         #closeLightboxButton {
             @apply absolute top-3 right-3 md:top-4 md:right-4 text-white bg-black bg-opacity-40 hover:bg-opacity-60 rounded-full p-0 text-3xl leading-none transition-colors duration-200;
-            width: 36px; /* Explicit size for the button */
+            width: 36px; 
             height: 36px;
-            display: flex; /* For centering the 'times' symbol */
+            display: flex; 
             align-items: center;
             justify-content: center;
-            line-height: 1; /* Ensure 'times' is centered vertically */
+            line-height: 1; 
         }
     </style>
 </head>
@@ -460,18 +507,27 @@
         </section>
 
         <section id="loveLetterSection" class="content-section hidden bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="ios-header">Quay lại vào đúng 6 tháng mí có thư =)))</h2>
-            <div id="loveLetterContent" class="love-letter-text prose max-w-none">
-                <!-- 
-                    MANUALLY EDIT YOUR LOVE LETTER HERE! 
-                    You can use <p> tags for paragraphs.
-                -->
-                <p></p>
-                <p></p>
-                <p></p>
-                <p></p>
-                <p></p>
-                <p>L</p>
+            <!-- This div is for the placeholder/countdown message -->
+            <div id="loveLetterPlaceholder">
+                <h2 class="ios-header">Quay lại vào đúng 6 tháng mí có thư =)))</h2>
+                <p id="letterCountdown" class="text-center text-gray-600 mt-4 text-lg"></p> 
+            </div>
+
+            <!-- This div is for the actual love letter, initially hidden -->
+            <div id="actualLoveLetter" class="hidden">
+                <h2 class="ios-header">Thư gửi em yêu ❤️</h2> 
+                <div id="loveLetterContent" class="love-letter-text prose max-w-none">
+                    <!-- 
+                        MANUALLY EDIT YOUR LOVE LETTER HERE! 
+                        You can use <p> tags for paragraphs.
+                    -->
+                    <p>Header</p>
+                    <p></p>
+                    <p></p>
+                    <p></p>
+                    <p></p>
+                    <p>Signature</p>
+                </div>
             </div>
         </section>
 
@@ -501,7 +557,8 @@
         </div>
     </nav>
 
-    <div id="imageLightbox" class="hidden fixed inset-0 bg-black bg-opacity-80 items-center justify-center p-4 z-50"> <div class="lightbox-content">
+    <div id="imageLightbox" class="hidden fixed inset-0 bg-black bg-opacity-80 items-center justify-center p-4 z-50"> 
+        <div class="lightbox-content">
             <div class="lightbox-image-container">
                 <img id="lightboxImage" src="" alt="Enlarged memory" >
             </div>
@@ -509,7 +566,8 @@
                 <h3 id="lightboxCaption"></h3>
                 <p id="lightboxDate"></p>
                 <p id="lightboxLocation"></p>
-                <div class="border-t border-gray-200 pt-3 mt-3"> <h4 class="text-md font-semibold text-gray-800 mb-1">Our Little Story:</h4>
+                <div class="border-t border-gray-200 pt-3 mt-3"> 
+                    <h4 class="text-md font-semibold text-gray-800 mb-1">Kỉ niệm của chông vợ hài:</h4>
                     <p id="lightboxStory"></p>
                 </div>
             </div>
@@ -517,7 +575,8 @@
         <button id="closeLightboxButton" aria-label="Close lightbox">&times;</button>
     </div>
 
-    <div id="feedbackModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-60 flex items-center justify-center z-[60] p-4"> <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+    <div id="feedbackModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-60 flex items-center justify-center z-[60] p-4"> 
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
             <h3 id="modalTitle" class="text-xl font-semibold mb-2 text-gray-800"></h3>
             <p id="modalMessage" class="text-gray-700 mb-4"></p>
             <button id="closeModalButtonFeedback" class="w-full bg-pink-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-pink-600 transition-colors">OK</button>
