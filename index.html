@@ -74,7 +74,6 @@
 
         // --- UI Rendering and Updates ---
         function switchView(viewName) {
-            // ... (same as before)
             console.log("Switching to view:", viewName);
             currentView = viewName;
             Object.keys(sections).forEach(key => {
@@ -93,7 +92,6 @@
         }
 
         function updateJourneyView() {
-            // ... (same as before, with null checks for elements)
             const durationEl = document.getElementById('relationshipDuration');
             const nextAnniversaryEl = document.getElementById('nextAnniversary');
             const nextMonthlyAnniversaryEl = document.getElementById('nextMonthlyAnniversary');
@@ -133,7 +131,6 @@
         }
 
         function setupLoveLetterReveal() {
-            // ... (same as before, with null checks for elements)
             if (!loveLetterPlaceholder || !actualLoveLetter || !letterCountdownEl) return;
             const startDate = new Date(relationshipStartDate + "T00:00:00");
             if (isNaN(startDate.getTime())) {
@@ -154,11 +151,10 @@
         }
 
         function renderPhotoMemories() {
-            // ... (same as before, with null checks for container)
             const container = document.getElementById('photoMemoriesContainer');
             if (!container) return;
             container.innerHTML = '';
-            if (photoMemories.length === 0) { /* Message handled by loadPhotoMemories */ return; }
+            if (photoMemories.length === 0) { return; }
             photoMemories.forEach(memory => {
                 const memoryEl = document.createElement('div');
                 memoryEl.className = 'bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden relative group cursor-pointer';
@@ -182,7 +178,7 @@
             });
         }
 
-        // --- Timeline Functions (REVISED) ---
+        // --- Timeline Functions ---
         function renderTimelineEvents() {
             const container = document.getElementById('timelineEventsContainer');
             if (!container) { console.error("timelineEventsContainer not found."); return; }
@@ -195,40 +191,35 @@
             
             timelineEventsData.forEach((event, index) => {
                 const eventWrapper = document.createElement('div');
-                // Each event item is relative for positioning the dot and line
-                // pl-8 provides space for the dot and line on the left. py-2 for vertical spacing between events.
-                eventWrapper.className = 'relative pl-8 py-3 group cursor-pointer'; 
+                eventWrapper.className = 'relative group cursor-pointer'; // Removed pl-8 and py-3, will be on cardEl
 
-                // Connecting line: A vertical line on the left side of the content area
-                // It should start below the current dot and extend to roughly the next dot's height.
-                if (index < timelineEventsData.length - 1) {
-                    const lineEl = document.createElement('div');
-                    // Positioned to the left (e.g., left-3 or 12px), starting from below the dot
-                    // top-5 (20px), assuming dot is also roughly at top-5 or similar
-                    // height should be h-full relative to eventWrapper's py-3 if items are tightly packed
-                    // More reliably, make it extend full height and use py on parent to control card height
-                    lineEl.className = 'absolute left-3 top-5 w-0.5 h-full bg-pink-200 -z-10';
-                    eventWrapper.appendChild(lineEl);
-                }
-
-                // Dot
+                // Dot Element
                 const dotEl = document.createElement('div');
-                // top-5 (20px from top of eventWrapper), left-1.5 (6px from left of eventWrapper)
-                // Adjust left to visually center on the line or be just to its right
-                dotEl.className = 'absolute left-[6px] top-5 w-3 h-3 bg-pink-500 rounded-full border-2 border-white group-hover:bg-pink-700 transition-colors transform';
+                dotEl.className = 'absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 bg-pink-500 rounded-full border-2 border-white group-hover:bg-pink-700 transition-colors z-10';
                 eventWrapper.appendChild(dotEl);
 
-                // Content card itself, now to the right of the space created by pl-8 on eventWrapper
+                // Line Element (only if not the last item)
+                if (index < timelineEventsData.length - 1) {
+                    const lineEl = document.createElement('div');
+                    // Starts from the center of the dot, extends downwards.
+                    // left-3 (for dot) + (w-3 / 2 for dot) - (w-0.5 / 2 for line) = approx left-[13px] or similar
+                    // Or, more simply, align its left edge with the dot's left edge, and adjust its width.
+                    // The line is purely visual and behind the card content.
+                    lineEl.className = 'absolute left-[13px] top-1/2 w-0.5 h-full bg-pink-200 -z-0'; // Let card bg cover it
+                    eventWrapper.appendChild(lineEl);
+                }
+                
+                // Content Card Element (indented to the right of the dot/line)
                 const cardEl = document.createElement('div');
-                cardEl.className = 'ml-0 p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300'; 
+                cardEl.className = 'ml-10 p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 mb-6'; // Added mb-6 for spacing
 
                 let photoHtml = '';
                 if (event.photoId) {
                     const photo = photoMemories.find(p => p.internalId === event.photoId);
-                    if (photo && photo.imageUrl) { // Check if photo and imageUrl exist
+                    if (photo && photo.imageUrl) {
                         photoHtml = `<img src="${photo.imageUrl}" alt="${event.title || 'Kỷ niệm'}" class="mt-3 rounded-md max-h-40 object-cover w-full sm:w-auto transition-transform duration-300 group-hover:scale-105">`;
                     } else {
-                        console.warn(`Photo not found or imageUrl missing for photoId: ${event.photoId} in timeline event: "${event.title}"`);
+                        // console.warn(`Photo not found or imageUrl missing for photoId: ${event.photoId} in timeline event: "${event.title}"`);
                     }
                 }
 
@@ -264,31 +255,31 @@
             const linkedPhoto = eventData.photoId ? photoMemories.find(p => p.internalId === eventData.photoId) : null;
             if (linkedPhoto && linkedPhoto.imageUrl) {
                 timelineEventModalImage.src = linkedPhoto.imageUrl;
-                timelineEventModalImage.alt = eventData.title;
+                timelineEventModalImage.alt = eventData.title || "Hình ảnh sự kiện";
                 timelineEventModalImage.classList.remove('hidden');
             } else {
                 timelineEventModalImage.classList.add('hidden');
                 timelineEventModalImage.src = "";
                 timelineEventModalImage.alt = "";
             }
-
-            timelineEventModal.classList.remove('hidden');
-            timelineEventModal.classList.add('flex');
+            
+            // Ensure modal is visible
+            timelineEventModal.classList.remove('modal-hidden'); // Using custom class
+            timelineEventModal.classList.add('modal-visible');   // Using custom class
             document.body.style.overflow = 'hidden';
-            console.log("Timeline modal displayed.");
+            console.log("Timeline modal should be displayed.");
         }
 
         function closeTimelineEventModal() {
             if (!timelineEventModal) return;
-            timelineEventModal.classList.add('hidden');
-            timelineEventModal.classList.remove('flex');
+            timelineEventModal.classList.add('modal-hidden');    // Using custom class
+            timelineEventModal.classList.remove('modal-visible'); // Using custom class
             document.body.style.overflow = 'auto';
             console.log("Timeline modal closed.");
         }
 
         // --- Lightbox Functions ---
         function openLightbox(memoryInternalId) {
-            // ... (same as before, with null checks)
             const memory = photoMemories.find(m => m.internalId === memoryInternalId);
             if (!memory || !lightbox) return;
             if (lightboxImage) { lightboxImage.src = memory.imageUrl; lightboxImage.alt = memory.caption || "Kỷ niệm"; }
@@ -303,20 +294,23 @@
             }
             if (lightboxLocation) lightboxLocation.textContent = memory.location ? `Địa điểm: ${memory.location}` : "Địa điểm: Không rõ";
             if (lightboxStory) lightboxStory.textContent = memory.story || "Chưa có câu chuyện cho kỷ niệm này.";
-            lightbox.classList.remove('hidden'); lightbox.classList.add('flex'); document.body.style.overflow = 'hidden';
+            
+            lightbox.classList.remove('modal-hidden'); // Using custom class for consistency
+            lightbox.classList.add('modal-visible');   // Using custom class
+            document.body.style.overflow = 'hidden';
         }
 
         function closeLightbox() {
-            // ... (same as before)
             if (!lightbox) return;
-            lightbox.classList.add('hidden'); lightbox.classList.remove('flex'); document.body.style.overflow = 'auto';
+            lightbox.classList.add('modal-hidden');    // Using custom class
+            lightbox.classList.remove('modal-visible'); // Using custom class
+            document.body.style.overflow = 'auto';
         }
 
         // --- Event Listeners and Initialization ---
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("DOM fully loaded and parsed. Initializing page...");
 
-            // Assign all DOM elements first
             sections.letter = document.getElementById('loveLetterSection');
             sections.memories = document.getElementById('memoriesSection');
             sections.journey = document.getElementById('journeySection');
@@ -345,20 +339,28 @@
             const allCoreElementsPresent = 
                 sections.letter && sections.memories && sections.journey && sections.timeline &&
                 navButtons.letter && navButtons.memories && navButtons.journey && navButtons.timeline &&
-                lightbox && closeLightboxButton && loveLetterPlaceholder && actualLoveLetter && letterCountdownEl &&
+                lightbox && lightboxImage && lightboxCaption && lightboxDate && lightboxLocation && lightboxStory && closeLightboxButton && 
+                loveLetterPlaceholder && actualLoveLetter && letterCountdownEl &&
                 timelineEventModal && timelineEventModalTitle && timelineEventModalDate && 
                 timelineEventModalDescription && timelineEventModalImage && closeTimelineEventModalButton;
 
             if (!allCoreElementsPresent) {
-                console.error("CRITICAL FAILURE: One or more core UI elements are missing from the DOM. Page cannot initialize correctly. Please check all element IDs in your HTML and script.");
-                document.body.innerHTML = "<p style='color:red; font-size:1.2em; padding:20px; text-align:center;'>Lỗi nghiêm trọng: Không tìm thấy các thành phần giao diện cần thiết. Trang không thể hoạt động. Vui lòng kiểm tra mã HTML.</p>";
+                let missingElements = "";
+                // Add checks for each element to identify which one is missing
+                if (!sections.letter) missingElements += "sections.letter, ";
+                // ... (add all checks here for debugging)
+                if (!timelineEventModalImage) missingElements += "timelineEventModalImage, ";
+
+
+                console.error(`CRITICAL FAILURE: One or more core UI elements are missing from the DOM. Missing: ${missingElements}. Page cannot initialize correctly. Please check all element IDs in your HTML and script.`);
+                document.body.innerHTML = `<p style='color:red; font-size:1.2em; padding:20px; text-align:center;'>Lỗi nghiêm trọng: Không tìm thấy các thành phần giao diện cần thiết. Trang không thể hoạt động. Vui lòng kiểm tra mã HTML. Thiếu: ${missingElements}</p>`;
                 return; 
             }
             console.log("All core UI elements successfully assigned from DOM.");
 
             try {
                 console.log("Attempting to load initial data...");
-                await loadInitialData(); // This includes fetching photos and initial renders
+                await loadInitialData(); 
                 console.log("Initial data loaded and initial renders complete.");
                 
                 setupLoveLetterReveal();
@@ -378,7 +380,6 @@
                  return; 
             }
 
-            // Setup event listeners only after everything else is ready
             Object.keys(navButtons).forEach(key => {
                 if (navButtons[key]) {
                     navButtons[key].addEventListener('click', (event) => {
@@ -412,7 +413,23 @@
         button:active, .group:active { transform: scale(0.97); transition: transform 0.1s ease; }
         .love-letter-text p { @apply mb-4 leading-relaxed text-gray-700; }
         nav .flex > button { @apply w-1/4; }
-        #imageLightbox { @apply hidden fixed inset-0 bg-black bg-opacity-80 items-center justify-center p-2 sm:p-4 z-50; }
+        
+        /* Modal Base Styles */
+        .modal-base {
+            position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+            background-color: rgba(0,0,0,0.75);
+            padding: 1rem; /* p-4 */
+            z-index: 50; /* Default z-index for modals */
+            display: flex; /* Changed from none to flex, visibility controlled by specific classes */
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-hidden { display: none !important; } /* Use !important to ensure it overrides other display properties */
+        .modal-visible { display: flex !important; } /* Ensure it's flex when visible */
+
+
+        /* Image Lightbox */
+        #imageLightbox { z-index: 50; /* Ensure consistency or make higher if needed */ }
         .lightbox-content { @apply bg-white rounded-lg shadow-xl p-4 md:p-6 max-w-lg sm:max-w-xl md:max-w-3xl w-full max-h-[90vh] overflow-y-auto flex flex-col md:flex-row gap-4; }
         #lightboxImage { @apply w-full md:w-1/2 h-auto max-h-[50vh] md:max-h-[calc(80vh-4rem)] object-contain rounded-md mb-4 md:mb-0; }
         .lightbox-details { @apply md:w-1/2 flex flex-col py-1 md:py-2; }
@@ -420,13 +437,13 @@
         #lightboxDate, #lightboxLocation { @apply text-xs sm:text-sm text-gray-600 mb-1; }
         #lightboxStory { @apply text-sm sm:text-base text-gray-700 mt-2 md:mt-3 leading-relaxed flex-grow overflow-y-auto pr-1 md:pr-2; }
         #closeLightboxButton { @apply absolute top-2 right-2 sm:top-3 sm:right-3 text-white bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full p-0 text-2xl sm:text-3xl; width: 30px; height: 30px; sm:width: 36px; sm:height: 36px; display: flex; align-items: center; justify-content: center; line-height: 1; }
+        
+        /* Timeline Styles */
         #timelineSection .ios-header { @apply text-pink-700;}
-        #timelineEventsContainer { @apply space-y-0; /* Let eventWrapper handle its own spacing/padding */ }
-         /* Styling for timeline eventWrapper in renderTimelineEvents JS: 
-           eventWrapper.className = 'relative pl-8 py-3 group cursor-pointer'; 
-           This creates the space for the dot and line.
-        */
-        #timelineEventModal { @apply hidden fixed inset-0 bg-black bg-opacity-75 items-center justify-center p-4 z-[55]; }
+        #timelineEventsContainer { @apply space-y-0; }
+        
+        /* Timeline Event Modal */
+        #timelineEventModal { z-index: 55; /* Higher than image lightbox if they can overlap */ }
         .timeline-modal-content { @apply bg-white rounded-lg shadow-xl p-5 sm:p-6 max-w-md w-full max-h-[85vh] overflow-y-auto text-center sm:text-left; }
         #timelineEventModalTitle { @apply text-xl sm:text-2xl font-bold text-pink-600 mb-2; }
         #timelineEventModalDate { @apply text-sm text-gray-500 mb-3; }
@@ -438,7 +455,7 @@
 <body class="bg-pink-50 flex flex-col min-h-screen">
 
     <header class="bg-white shadow-md p-3 sm:p-4 text-center sticky top-0 z-20">
-        <h1 class="text-xl sm:text-2xl font-semibold text-pink-600">Mừng 6 tháng bên nhau 🥰</h1>
+        <h1 class="text-xl sm:text-2xl font-semibold text-pink-600">Mừng 6 tháng bên nhau ❤️</h1>
     </header>
 
     <main id="contentArea" class="flex-grow overflow-y-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
@@ -455,7 +472,7 @@
         </section>
 
         <section id="timelineSection" class="content-section hidden">
-            <h2 class="ios-header">Dòng thời gian kỷ niệm</h2>
+            <h2 class="ios-header">Dòng thời gian Kỷ Niệm</h2>
             <p class="text-center text-sm text-gray-500 mb-4 sm:mb-6">Những cột mốc đáng nhớ của chúng ta.</p>
             <div id="timelineEventsContainer" class="relative"> <p class="text-gray-500 text-center py-4">Đang tải dòng thời gian...</p> </div>
         </section>
@@ -506,7 +523,8 @@
         </div>
     </nav>
 
-    <div id="imageLightbox" class="hidden">
+    <!-- Modals at the end of the body -->
+    <div id="imageLightbox" class="modal-base modal-hidden"> <!-- Added modal-base, modal-hidden -->
         <div class="lightbox-content">
             <img id="lightboxImage" src="" alt="Kỷ niệm phóng to" >
             <div class="lightbox-details">
@@ -519,7 +537,7 @@
         <button id="closeLightboxButton" aria-label="Đóng lightbox">&times;</button>
     </div>
 
-    <div id="timelineEventModal" class="hidden">
+    <div id="timelineEventModal" class="modal-base modal-hidden"> <!-- Added modal-base, modal-hidden -->
         <div class="timeline-modal-content">
             <h3 id="timelineEventModalTitle"></h3> <p id="timelineEventModalDate"></p>
             <img id="timelineEventModalImage" src="" alt="" class="hidden">
@@ -528,7 +546,7 @@
         </div>
     </div>
 
-    <div id="feedbackModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-60 flex items-center justify-center z-[60] p-4">
+    <div id="feedbackModal" class="modal-base modal-hidden"> <!-- Added modal-base, modal-hidden (if used) -->
         <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
             <h3 id="modalTitle" class="text-xl font-semibold mb-2 text-gray-800"></h3> <p id="modalMessage" class="text-gray-700 mb-4"></p>
             <button id="closeModalButtonFeedback" class="w-full bg-pink-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-pink-600 transition-colors">OK</button>
